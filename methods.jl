@@ -1,17 +1,46 @@
 ## Data
 using LinearAlgebra
-using JSON
-data = JSON.parsefile("fauci-email-graph.json")
-
-## List of graphs
 using MatrixNetworks
-include("include/FlowSeed.jl")
+using JSON
 
+data = JSON.parsefile("fauci-email-graph.json")
+include("include/FlowSeed.jl")
 include("include/PushRelabelMaxFlow.jl")
-function stcut(A::SparseMatrixCSC, s::Int, t::Int)
+
+function stcut(A::SparseMatrixCSC, s::Int, t::Int; smallside::Bool = true)
     F = maxflow(Float64.(A),s,t,0.0)
     S = source_nodes_min(F)
+    if smallside
+      if length(S) > size(A,1)/2
+        S = setdiff(1:size(A,1), S)
+      end
+    end
+    return S
 end
+
+function bigsplits(A,minsize::Int=15)
+    n = size(A,1)
+    bigsets = NTuple{2,Int}[]
+    sizes = Int[]
+    for i=1:n
+        for j=i+1:n
+            S = stcut(A,i,j;smallside=true)
+            if length(S) > minsize
+                push!(bigsets, tuple(i,j))
+                push!(sizes, length(S))
+            end
+
+        end
+    end
+    # reshape to matrix
+    seeds = zeros(length(bigsets), 2)
+    for i=1:length(bigsets)
+        seeds[i,1] = bigsets[i][1]
+        seeds[i,2] = bigsets[i][2]
+    end
+    return seeds, sizes
+end
+
 
 ##
 using PyCall
