@@ -123,6 +123,53 @@ function _build_email_tofrom_graph(data;
   return (A=Af, names=names[filt], orgs = data["clusters"][filt], filt=filt,
       maxset, mindegree, keepfauci, emailweight)
 end
+##
+""" Build a replied-to graph. In this graph, two nodes are connected
+if x replied to an email from y. This is built by looking at each
+  thread in reverse order (so oldest message first). Take the
+  sender of message 1... and then the sender of message 2... we put in an edge
+  from sender 1 to sender 2 if sender 1 is either a recipient or CC of message 2.
+  This analysis is done for all temporally ordered pairs of emails
+    in the thread.
+
+  Note that ideally we would run this on the threads without duplicate emails.
+"""
+function _build_email_repliedto_graph(data;
+    mindegree::Int=0, keepfauci=true)
+  names = data["names"]
+  edges = Tuple{Int,Int}[]
+  weights = Float64[]
+  emailweight = false
+  emails=data["emails"]
+  idfauci=findfirst(data["names"] .== "fauci, anthony")-1
+  for thread in emails
+    nemails = length(thread)
+    for eid1=1:nemails # eid1 is the older email
+      for eid2=1:eid1-1  #eid2 are all possible emails that reply to eid1
+        e1 = thread[eid1]
+        e2 = thread[eid2]
+        s1 = e1["sender"]
+        s2 = e2["sender"]
+        # s2 is the newer email... so is s1 a recipeient or CC of s2?
+        if s1 in e2["recipients"] || s1 in e2["cc"]
+          if keepfauci || (keepfauci == false && s1!=idfauci && s2!=idfauci)
+            push!(edges, (s1+1,s2+1))
+          end
+        end
+      end
+    end
+  end
+  A = sparse(first.(edges), last.(edges), emailweight ? weights : 1,
+        length(names), length(names))
+  A = dropzeros!(max.(A,A'))
+  println("Raw data has ")
+  println("  $(size(A,1)) nodes and $(nnz(A)÷2) edges")
+  Af,filt = _mindegree_and_cc_filter(A;mindegree)
+  println("Degree (mindegree=$mindegree) and CC filtered data has ")
+  println("  $(size(Af,1)) nodes and $(nnz(Af)÷2) edges")
+  return (A=Af, names=names[filt], orgs = data["clusters"][filt], filt=filt,
+      mindegree, keepfauci, emailweight)
+end
 #F = _build_email_tofrom_graph(data; mindegree=0, keepfauci=false, maxset=5)
 ##
 function build_graphs(data)
