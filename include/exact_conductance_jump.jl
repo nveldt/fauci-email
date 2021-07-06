@@ -7,7 +7,6 @@ gurobi_env = Gurobi.Env()
 function exact_conductance(A,outputflag = true)
 
     @assert(issymmetric(A))
-    if diagm(A) 
     n = size(A,1)
     d = vec(sum(A,dims=1))
     vol = sum(d)
