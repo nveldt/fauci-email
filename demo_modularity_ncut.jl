@@ -9,18 +9,18 @@ G = _build_email_tofrom_graph(data; keepcc = true,
 drawgraph(G,markersize = 5)
 
 ##
-include("Optimal_LambdaCC.jl")
+include("include/Optimal_LambdaCC.jl")
 
 # Make this unweighted, if desired
 A = Float64.(G.A)
 fill!(A.nzval, 1)
 
 ## Exact normalized cut and modularity
-# May take a while... 
+# May take a while...
 Clus, Lams, ncut_S = exact_normalized_cut(A)
 
 # first clustering will be the modularity solutions
-c = Clus[1] 
+c = Clus[1]
 
 ## Display modularity clustering
 drawgraph(G,alpha = 0.5)
@@ -30,3 +30,6 @@ end
 
 # and optimal normalized cut solution
 drawset!(G,ncut_S;markershape = :square,markersize = 8)
+
+## Exact min conductance set
+include("include/exact_conductance_jump.jl")
