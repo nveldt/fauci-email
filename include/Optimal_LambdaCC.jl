@@ -214,6 +214,120 @@ function find_violations!(D::Matrix{Float64}, violations::Vector{Tuple{Int,Int,I
   end
 end
 
+
+function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
+
+    n = size(A,1)
+    d = vec(sum(A,dims=1))
+    W = zeros(n,n)
+    for i = 1:n
+        for j = 1:n
+            W[i,j] = A[i,j]-d[i]*d[j]*lam
+        end
+    end
+    # Create a model that will use Gurobi to solve
+    # m = Model(solver=GurobiSolver(OutputFlag = 1,TimeLimit = time_limit, FeasibilityTol = FeasTol, Method = SolverMethod, Crossover = CrossoverStrategy, LogFile = OutputFile))
+    m = Model(optimizer_with_attributes(() -> Gurobi.Optimizer(gurobi_env), "OutputFlag" => outputflag))
+
+    @variable(m, x[1:n,1:n],Bin)
+
+    # Minimize the weight of disagreements (relaxation)
+    @objective(m, Min, sum((W[i,j])*x[i,j] for i=1:n-1 for j = i+1:n))
+
+    # Constraints: 0 <= x_ij <= 1 for all node pairs (i,j)
+    # for i = 1:n-1
+    #     for j = i:n
+    #         @constraint(m,x[i,j] <= 1)
+    #         @constraint(m,x[i,j] >= 0)
+    #     end
+    # end
+
+    # If we solve with no triangle inequality constraints, we would get the
+    # solution D[i,j] = D[j,i] = 1 if A[i,j] = 0 and D[i,j] = D[j,i] = 1
+    # otherwise.
+    #
+    # If we then checked all 3-tuples of nodes, we'd find that the only time
+    # triangle constraints were violated is at bad triangles (++- triangles,
+    # a tuple that is an unclosed wedge).
+    # Hence, from the very beginning we know we must include
+    # a triangle inequality constraint at every bad triangle.
+
+    for i = 1:n
+        NeighbsI = findall(x->x>0,(A[:,i]))
+        numNeighbs = size(NeighbsI,1)
+        for u = 1:numNeighbs-1
+            j = NeighbsI[u]
+            for v = u+1:numNeighbs
+                k = NeighbsI[v]
+                if A[j,k] == 0
+                    # Then we have a bad triangle: (i,j), (i,k) \in E
+                    # but (j,k) is not an edge, so D(j,k) wants to be 1
+                    #assert(i<j<k)
+                    @constraint(m,x[min(j,k),max(j,k)] - x[min(i,k),max(i,k)] - x[min(i,j),max(i,j)] <= 0)
+                end
+            end
+        end
+    end
+
+    # Find intial first solution
+    if verbose 
+        println("First round of optimization")
+    end
+    JuMP.optimize!(m)
+
+    while true
+        # x will naturally be upper triangular, but 'find_violations'  wants lower triangular
+          D = Matrix(JuMP.value.(x)')
+
+         # Store violating tuples in a vector
+         violations = Vector{Tuple{Int,Int,Int}}()
+         
+         find_violations!(D,violations)
+
+         # Iterate through and add constraints
+         numvi = size(violations,1)
+         if verbose
+            print("Adding in $numvi violated constraints.")
+         end
+
+         # Violations (a,b,c) are ordered so that a < b, and (a,b) is the value
+         # that needs to be positive in the inequality:
+         # x_ab - x_ac - x_bc <= 0.
+         # The other two (b and c) could satisfy either b < c or c <= b.
+         # We need to make sure we are only placing constraints in the upper
+         # triangular portion of the matrix.
+         # We do so by just calling min and max on pairs of nodes
+         for v in violations
+             #assert(v[1]<v[2])
+             @constraint(m,x[v[1],v[2]] - x[min(v[1],v[3]),max(v[1],v[3])] - x[min(v[2],v[3]),max(v[2],v[3])] <= 0)
+         end
+         if numvi == 0
+             if verbose
+                println(" Optimal solution found.")
+             end
+             break
+         end
+         if verbose
+            println(" And re-solving the ILP.")
+         end
+         JuMP.optimize!(m)
+     end
+
+    # Return the objective score and the distance matrix
+    D = JuMP.value.(x)
+    LPbound = 0.0
+    for i = 1:n-1
+        for j = i+1:n
+            if W[i,j] > 0
+                LPbound += W[i,j]*D[i,j]
+            else
+                LPbound += -W[i,j]*(1-D[i,j])
+            end
+        end
+    end
+    return extractClustering(D), D
+end
+
 # Use Gurobi to solve the Lambda CC objective exactly
 # See Gurobi Parameter explanations online at: http://www.gurobi.com/documentation/8.0/refman/parameters.html
 function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
