@@ -408,7 +408,7 @@ function dynamic_layout(T::NamedTuple;
   end
   return output
 end
-rval = dynamic_layout(T;gamma=0.5,R=1.25,C=1.0,normalize=true)
+rval = dynamic_layout(T;gamma=0.66,R=1.2,C=0.75,normalize=true,temp=0.005)
 anim = @animate for (pos,mat,date) in rval
   #@show size(pos)
   matdraw = triu(mat,1)
@@ -421,8 +421,8 @@ anim = @animate for (pos,mat,date) in rval
     annotate!(pos[i,1],pos[i,2], (split(T.names[i], ",")[1], 7, :black))
   end
   title!(string(date))
-end every 2
-gif(anim, "anim.gif", fps=30)
+end
+gif(anim, "anim.gif", fps=60)
 
 
 
