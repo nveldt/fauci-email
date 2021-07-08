@@ -1,5 +1,7 @@
 [deps]
 Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+FFMPEG = "c87230d0-a227-11e9-1b43-d7ebe4e7570a"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
 HyperModularity = "bc4352e7-2825-48c1-aa5c-95462f20dcc0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"

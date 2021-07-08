@@ -140,6 +140,8 @@ R2 = temporal_reachability(data)
 using DelimitedFiles
 Tc1 = min.(R1.R,R1.R')
 Tc2 = min.(R2.R,R2.R')
+## Setup PMC
+#=
 ##
 writedlm("fauci-reachability.txt", zip(findnz(triu(Tc2,1))[1:2]...))
 ## Run PMC on this to find the largest clique
@@ -164,13 +166,72 @@ Heuristic found clique of size 77 in 0.013005 seconds
 [pmc: heuristic]  Maximum clique: 672 728 729 730 733 734 826 735 737 751 792 818 133 80 81 83 88 102 123 124 125 79 137 140 159 161 162 220 229 34 2 3 4 5 7 22 30 32 239 35 36 48 54 67 68 77 536 551 556 559 576 584 508 613 635 639 666 1 677 694 350 241 245 276 278 292 293 294 299 368 375 399 412 480 498 503 795
 Heuristic found optimal solution.
 """
+=#
+## We can actually verify the maxclique without PMC in this case.
+# There's a clique with the same size as the largest core number.
+# This is a certificate that you have the max-clique.
+# THIS DOES NOT WORK IN GENERAL TO FIND THE MAX-CLIQUE. But since
+# we happen to know how to characterize this one, we can prove
+# that we have the optimal with some simple code based on the
+# maxcore.
+function simple_clique_heuristic(A::SparseMatrixCSC)
+  cns = corenums(A)[1]
+  maxcore = maximum(cns)
+  maxcoreids = findall(cns .== maxcore)
+  C = greedy_clique(A[maxcoreids,maxcoreids])
+  if length(C) != maxcore
+    @warn("not maximum clique, so we don't have the largest temporal strong component")
+  end
+  return maxcoreids[collect(C)]
+end
+function greedy_clique(A::SparseMatrixCSC)
+  B = copy(A)
+  fill!(B.nzval, 1)
+  B = B - Diagonal(B)
+  dropzeros!(B)
+  @assert issymmetric(B)
+  d = vec(sum(B;dims=2))
+  # C is the current clique, F is the set of feasible vertices to add
+  # we pick the one with the largest degree.
+  function _expand_clique(C::Set{Int}, F::Set{Int})
+    maxd = 0
+    argmaxF = 0
+    for v in F
+      if d[v] > maxd
+        argmaxF = v
+        maxd = d[v]
+      end
+    end
+    push!(C,argmaxF)
+    # update F...
+    # remove everything in F that doesn't have a link to v.
+    filter!(u->B[u,argmaxF] == 1, F)
+    if length(F) > 0
+      return _expand_clique(C, F)
+    else
+      return C
+    end
+  end
+  # start that on the vertex of max-degree
+  C = Set((argmax(d),))
+  F = Set(findnz(B[:,first(C)])[1])
+  return _expand_clique(C,F)
+end
+C1 = simple_clique_heuristic(Tc1)
+C2 = simple_clique_heuristic(Tc2)
+
 ##
-# This is the largest temporal strong component on the expanded version
-Tcc_ids = vec([ 672 728 729 730 733 734 826 735 737 751 792 818 133 80 81 83 88 102 123 124 125 79 137 140 159 161 162 220 229 34 2 3 4 5 7 22 30 32 239 35 36 48 54 67 68 77 536 551 556 559 576 584 508 613 635 639 666 1 677 694 350 241 245 276 278 292 293 294 299 368 375 399 412 480 498 503 795])
+C1 == C2
+
+##
+Tcc_ids = C1
+##
+# This is the largest temporal strong component on the expanded version from Pmc
+# Tcc_ids = vec([ 672 728 729 730 733 734 826 735 737 751 792 818 133 80 81 83 88 102 123 124 125 79 137 140 159 161 162 220 229 34 2 3 4 5 7 22 30 32 239 35 36 48 54 67 68 77 536 551 556 559 576 584 508 613 635 639 666 1 677 694 350 241 245 276 278 292 293 294 299 368 375 399 412 480 498 503 795])
 ## It's actually also a Tcc on the more restrictive version
 @assert Tc1[Tcc_ids,Tcc_ids] == ones(length(Tcc_ids),length(Tcc_ids))
 ##
-println.(R.names[Tcc_ids]);
+println.(R1.names[Tcc_ids]);
 ## Build the sequence of adjacency matrices on this subset of indices
 function build_temporal_graphs(data;
     keepcc::Bool=true,keepfauci::Bool=true,
@@ -208,6 +269,156 @@ T = build_temporal_graphs(data; subset=Tcc_ids)
 
 ## Try some fun layouts and movies...
 using NetworkLayout
+pos2xy(pos::Vector) = [first.(pos) last.(pos)]
+
+
+##
+F = sum(last.(T.T)) # adjacency matrix sum
+plot(draw_graph_lines(F,pos2xy(spring(F;iterations=20)))...,
+  framestyle=:none, legend=false)
+
+##
+#anim = @animate for pos in LayoutIterator(SFDP(;K=0.1,C=0.01,iterations=200), F)
+anim = @animate for pos in LayoutIterator(Spring(;initialtemp=0.2,C=0.2,iterations=1000), 10*F .- ones(size(F)...))
+  xy = pos2xy(pos)
+  plot(draw_graph_lines(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markersize=5, alpha=0.5,
+    framestyle=:none, legend=false)
+end every 10
+gif(anim, "anim.gif", fps=15)
+
+##
+function draw_graph_lines_tuple(A::SparseMatrixCSC, xy;shorten::Float64=0)
+  if issymmetric(A)
+      ei,ej = findnz(triu(A,1))[1:2]
+  else
+      ei,ej = findnz(A)[1:2]
+  end
+  # find the line segments
+  lx = Vector{Float64}[]
+  ly = Vector{Float64}[]
+  for nz=1:length(ei)
+    src = ei[nz]
+    dst = ej[nz]
+    if shorten != 0
+      push!(lx, [xy[src,1], xy[dst,1]])
+      push!(ly, [xy[src,2], xy[dst,2]])
+    else
+      # view xy as a line, then
+      a = shorten
+      b = 1-shorten 
+      push!(lx, [b*xy[src,1]+a*xy[dst,1], a*xy[src,1]+b*xy[dst,1]])
+      push!(ly, [b*xy[src,2]+a*xy[dst,2], a*xy[src,2]+b*xy[dst,2]])
+    end
+  end
+  return lx, ly
+end#
+plot(draw_graph_lines_tuple(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markersize=5, alpha=0.5,
+  framestyle=:none, legend=false)
+## Try and do a dynamic layout
+using GeometryBasics: Point
+function apply_forces(adj_matrix, old_pos = Vector{Point};
+    C::Float64 = 2.0, R::Float64=2.0, temp::Float64=0.025)
+
+  # The optimal distance bewteen vertices
+  N = size(adj_matrix, 1)
+  force = similar(old_pos)
+  Ftype = eltype(force)
+  K = C * sqrt(4.0 / N)
+  R = R
+
+  locs = copy(old_pos)
+  # Calculate forces
+  for i in 1:N
+      force_vec = zero(Ftype)
+      for j in 1:N
+          i == j && continue
+          d = norm(locs[j] .- locs[i])
+          if adj_matrix[i, j] != zero(eltype(adj_matrix)) || adj_matrix[j, i] != zero(eltype(adj_matrix))
+              # F = d^2 / K - K^2 / d
+              #F_d = max(adj_matrix[i, j], adj_matrix[j, i])*d / K - R*K^2 / d^2
+              # F_d = d / K - K^3 / d^3
+              F_d = min(1,max(adj_matrix[i, j], adj_matrix[j, i]))*d / K - R*K^2 / d^2
+          else
+              # Just repulsive
+              # F = -K^2 / d^
+              F_d = -R*K^2 / d^2
+          end
+          # d  /          sin θ = d_y/d = fy/F
+          # F /| dy fy    -> fy = F*d_y/d
+          #  / |          cos θ = d_x/d = fx/F
+          # /---          -> fx = F*d_x/d
+          # dx fx
+          force_vec += Ftype(F_d .* (locs[j] .- locs[i]))
+      end
+      force[i] = force_vec
+  end
+  # Cool down
+  #temp = algo.initialtemp / iteration
+  # Now apply them, but limit to temperature
+  for i in 1:N
+      force_mag = norm(force[i])
+      scale = min(force_mag, temp) ./ force_mag
+      locs[i] += force[i] .* scale
+  end
+
+  return locs
+end
+function dynamic_layout(T::NamedTuple;
+  niter=20,
+  niterease=5,
+  start=5,
+  gamma=0.5,
+  droptol=0.01,
+  kwargs...
+  )
+  output = Tuple{Matrix{Float64},SparseMatrixCSC{Float64,Int},Date}[]
+  N = size(T.T[1][2],1)
+  # start with a circular layout
+  pos = [Point{2,Float64}(cos(2*i*pi/N), sin(2*i*pi/N)) for i=1:N]
+  Finit = sum(last.(T.T[1:start])) |> x->max.(x,x') # get the initial matrix... make symmetric
+  F = min.(Finit,1)
+  for init_iter = 1:niter
+    pos = apply_forces(F, pos; kwargs...)
+  end
+  for (date,A) in T.T[start+1:end]
+    Fold = copy(F)
+    A = max.(A,A')
+    A = min.(A,1)
+    F = gamma*F + A # update matrix...
+    droptol!(F, droptol)
+    for ease_iter = 1:niterease
+      # interpolate between Fold, F using sin easing
+      # From Animations.jl
+      # f_sineio(fraction) = sin(pi * fraction - 0.5pi) * 0.5 + 0.5
+      amount = sin(pi*ease_iter/(niterease+1)-0.5pi)*0.5 + 0.5
+      Fcur = amount*F + (1-amount)*Fold
+      droptol!(Fcur, droptol)
+      pos = apply_forces(Fcur, pos; kwargs...)
+      push!(output, (pos2xy(pos),Fcur,date))
+    end
+    for iter = 1:niter
+      pos = apply_forces(F, pos; kwargs...)
+      push!(output, (pos2xy(pos),F,date))
+    end
+  end
+  return output
+end
+rval = dynamic_layout(T;gamma=0.33)
+anim = @animate for (pos,mat,date) in rval[1:100]
+  #@show size(pos)
+  matdraw = triu(mat,1) # triu is done inside draw_graph_lines
+  line_z = vec(repeat(nonzeros(matdraw),1,3)')
+  plot(draw_graph_lines_tuple(matdraw,pos;shorten=0.05)...,  line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
+    framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800), shorten=0.2)
+  scatter!(pos[:,1],pos[:,2], markersize=20, color=T.orgs, alpha=0.5,
+    markerstrokewidth=0)
+  for i=1:length(T.names)
+    annotate!(pos[i,1],pos[i,2], (split(T.names[i], ",")[1], 7, :black))
+  end
+  title!(string(date))
+end
+gif(anim, "anim.gif", fps=60)
+
 
 
 ## Multislice community detection
@@ -260,20 +471,33 @@ end
 M, slices = expand_to_slicetime_matrix(T)
 ##
 using HyperModularity
-cc = HyperModularity.LambdaLouvain(M, zeros(size(M,1)), 0.0)
+@time cc = HyperModularity.LambdaLouvain(M, zeros(size(M,1)), 0.0)
 ##
 maximum(cc[:,end])
 ##
-function exact_temporal_modularity(B)
-    #m = sum(nonzeros(A))/2
-    #d = vec(sum(A,dims = 2))
+function compute_modularity(A::SparseMatrixCSC,c)
+    obj = 0
+    m = sum(nonzeros(A)/2)
     n = size(A,1)
-    lam_mod = 1/(2*m)
-    c, D =  LazyExactLambdaCC(A,lam_mod,false)
-    modularity_score = compute_modularity(A,d,c)
-    return c, modularity_score
+    # index c...
+    C = sparse(1:n, c, 1, n, maximum(c))
+    Crv = rowvals(C)
+    rv = rowvals(A)
+    nz = nonzeros(A)
+    for ci=1:size(C,2)
+      Cset = Set(Crv[nzrange(C,ci)]) # index the cluster
+      for nzci in nzrange(C,ci)
+        i = Crv[nzci]
+        for nzi in nzrange(A,i)
+          if rv[nzi] in Cset
+            obj += nz[nzi]
+          end
+        end
+      end
+    end
+    return obj
 end
-
+compute_modularity(M,cc[:,end])
 ## Assemble the data into a little heatmap...
 C = zeros(maximum(slices[1]), length(slices))
 for (i,slice) in enumerate(slices)
