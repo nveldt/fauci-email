@@ -287,31 +287,28 @@ end every 10
 gif(anim, "anim.gif", fps=15)
 
 ##
-function draw_graph_lines_tuple(A::SparseMatrixCSC, xy;shorten::Float64=0)
-  if issymmetric(A)
-      ei,ej = findnz(triu(A,1))[1:2]
-  else
-      ei,ej = findnz(A)[1:2]
-  end
+function draw_graph_lines_tuple(A::SparseMatrixCSC, xy; shorten::Float64=0)
+  ei,ej = findnz(A)[1:2]
   # find the line segments
   lx = Vector{Float64}[]
   ly = Vector{Float64}[]
   for nz=1:length(ei)
     src = ei[nz]
     dst = ej[nz]
-    if shorten != 0
+    if shorten == 0
       push!(lx, [xy[src,1], xy[dst,1]])
       push!(ly, [xy[src,2], xy[dst,2]])
     else
       # view xy as a line, then
       a = shorten
-      b = 1-shorten 
+      b = 1-shorten
       push!(lx, [b*xy[src,1]+a*xy[dst,1], a*xy[src,1]+b*xy[dst,1]])
       push!(ly, [b*xy[src,2]+a*xy[dst,2], a*xy[src,2]+b*xy[dst,2]])
     end
   end
   return lx, ly
-end#
+end
+##
 plot(draw_graph_lines_tuple(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markersize=5, alpha=0.5,
   framestyle=:none, legend=false)
 ## Try and do a dynamic layout
@@ -404,12 +401,13 @@ function dynamic_layout(T::NamedTuple;
   return output
 end
 rval = dynamic_layout(T;gamma=0.33)
-anim = @animate for (pos,mat,date) in rval[1:100]
+anim = @animate for (pos,mat,date) in rval
   #@show size(pos)
   matdraw = triu(mat,1) # triu is done inside draw_graph_lines
   line_z = vec(repeat(nonzeros(matdraw),1,3)')
-  plot(draw_graph_lines_tuple(matdraw,pos;shorten=0.05)...,  line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
-    framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800), shorten=0.2)
+  plot(draw_graph_lines_tuple(matdraw,pos;shorten=0.1)...,
+    line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
+    framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800))
   scatter!(pos[:,1],pos[:,2], markersize=20, color=T.orgs, alpha=0.5,
     markerstrokewidth=0)
   for i=1:length(T.names)

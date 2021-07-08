@@ -123,15 +123,15 @@ function draw_graph_lines_tuple(A::SparseMatrixCSC, xy)
       ei,ej = findnz(A)[1:2]
   end
   # find the line segments
-  lx = Vector{Tuple{Float64,Float64}}[]
-  ly = Vector{Tuple{Float64,Float64}}[]
-  lx = zeros(0)
-  ly = zeros(0)
+  lx = Vector{Float64}[]
+  ly = Vector{Float64}[]
   for nz=1:length(ei)
       src = ei[nz]
       dst = ej[nz]
-      push!(lx, (xy[src,1], xy[dst,1]))
-      push!(ly, (xy[src,2], xy[dst,2])
+      push!(lx, [xy[src,1], xy[dst,1]])
+      push!(ly, [xy[src,2], xy[dst,2]])
   end
   return lx, ly
 end#
+plot(draw_graph_lines_tuple(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markersize=5, alpha=0.5,
+  framestyle=:none, legend=false)
