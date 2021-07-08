@@ -313,8 +313,9 @@ plot(draw_graph_lines_tuple(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markers
   framestyle=:none, legend=false)
 ## Try and do a dynamic layout
 using GeometryBasics: Point
+using LinearAlgebra
 function apply_forces(adj_matrix, old_pos = Vector{Point};
-    C::Float64 = 2.0, R::Float64=2.0, temp::Float64=0.025)
+    C::Float64 = 2.0, R::Float64=2.0, temp::Float64=0.025, normalize::Bool=false)
 
   # The optimal distance bewteen vertices
   N = size(adj_matrix, 1)
@@ -352,12 +353,19 @@ function apply_forces(adj_matrix, old_pos = Vector{Point};
   # Cool down
   #temp = algo.initialtemp / iteration
   # Now apply them, but limit to temperature
+  oldnorm = sum(norm.(locs))
   for i in 1:N
       force_mag = norm(force[i])
       scale = min(force_mag, temp) ./ force_mag
       locs[i] += force[i] .* scale
   end
-
+  if normalize
+    newnorm = sum(norm.(locs))
+    factor = oldnorm/newnorm
+    for i in 1:N # rescale to same energy...
+      locs[i] *= factor
+    end
+  end
   return locs
 end
 function dynamic_layout(T::NamedTuple;
@@ -400,11 +408,10 @@ function dynamic_layout(T::NamedTuple;
   end
   return output
 end
-rval = dynamic_layout(T;gamma=0.33)
+rval = dynamic_layout(T;gamma=0.5,R=1.25,C=1.0,normalize=true)
 anim = @animate for (pos,mat,date) in rval
   #@show size(pos)
-  matdraw = triu(mat,1) # triu is done inside draw_graph_lines
-  line_z = vec(repeat(nonzeros(matdraw),1,3)')
+  matdraw = triu(mat,1)
   plot(draw_graph_lines_tuple(matdraw,pos;shorten=0.1)...,
     line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
     framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800))
@@ -414,8 +421,8 @@ anim = @animate for (pos,mat,date) in rval
     annotate!(pos[i,1],pos[i,2], (split(T.names[i], ",")[1], 7, :black))
   end
   title!(string(date))
-end
-gif(anim, "anim.gif", fps=60)
+end every 2
+gif(anim, "anim.gif", fps=30)
 
 
 
