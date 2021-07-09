@@ -1,141 +1,9 @@
 ## Goal - extract time-varying graphs
 include("methods.jl")
 
-using Dates
-function _simple_check_duplicate(emails, email)
-  for e in emails
-    if e["sender"] == email["sender"] &&
-      e["recipients"] == email["recipients"] &&
-      e["cc"] == email["cc"]
-      return true
-    end
-  end
-  return false
-end
-""" get a dictionary that lists emails for each day. """
-function _emails_by_day_and_time(data;keepduplicates::Bool=false)
-  dt = DateFormat("yyyy-mm-ddTHH:MM:SS")
-  emails_by_day = Dict{Date, Vector{Any}}()
-  emails_by_time = Dict{DateTime, Vector{Any}}() # use to check for duplicates
-  duplicates=0
-  for thread in data["emails"]
-    for email in thread
-
-      t = DateTime(email["time"][1:19], dt)
-      day = Date(t)
-      if haskey(emails_by_time,t)
-        if keepduplicates==false &&
-          _simple_check_duplicate(emails_by_time[t], email)==true
-          duplicates += 1
-          continue # skip this email... it's a duplicate
-        else
-          push!(emails_by_time[t], email)
-        end
-      else
-        emails_by_time[t] = [email]
-      end
-
-      if haskey(emails_by_day, day)
-        push!(emails_by_day[day], email)
-      else
-        emails_by_day[day] = [email]
-      end
-    end
-  end
-
-  # give back a sorted list of days and emails by day
-  byday = sort!(collect(emails_by_day), by=x->x[1])
-  bytime = sort!(collect(emails_by_time), by=x->x[1])
-
-  return (bydate=byday, bytime=bytime, names=data["names"], orgs=data["clusters"],
-    keepduplicates, duplicates)
-end
-
-function _build_tofrom_edges(emails;
-            edges = Tuple{Int,Int}[],
-            weights = Float64[],
-            keepcc::Bool=false,
-            keepfauci::Bool=true,
-            maxset::Int = typemax(Int))
-  for email in emails
-    from=email["sender"]
-    if keepcc
-      others = [email["recipients"]; email["cc"]]
-    else
-      others = email["recipients"]
-    end
-    if length(others) <= maxset
-      for p in others
-        pi = from
-        pj = p # weird system to keep same check as below...
-        if keepfauci || (keepfauci == false && pj!=idfauci && pi!=idfauci)
-          push!(edges, (pi+1,pj+1))
-          push!(weights, 1/length(others))
-        end
-      end
-    end
-  end
-  return edges, weights
-end
-
-function _vector_of_sets_to_sparse(adjlist::Vector{Set{Int}};
-    n=maximum(Iterators.flatten(adjlist)),
-    weights=nothing)
-  # just copy out edges
-  edges = Tuple{Int,Int}[]
-  for (ei,neighs) in enumerate(adjlist)
-    for ej in neighs
-      push!(edges, (ei,ej))
-    end
-  end
-  return sparse(first.(edges),last.(edges),weights === nothing ? 1 : weights, n, n)
-end
-
-using Printf
-""" Build the temporal reachability matrix, this means
-that i->j if there is a temporal path from i to j. Temporal paths are resolved
-down to the level of days. So if i and j exchange email on the same day, then
-that event is not ordered and can we treat it as a non-directional edge. """
-function temporal_reachability(data; keepcc::Bool=true,
-    keepfauci::Bool=true, expandstrongcomponents::Bool=true)
-  tdata = _emails_by_day_and_time(data)
-  n = length(tdata.names)
-  @assert issorted(Iterators.map(first, tdata.bydate)) # check sorting
-  #R = length(tdata) |> x->zeros(x,x) # allocate a matrix of zeros
-  R = [Set{Int}((j,)) for j=1:length(tdata.names)] # allocate reachability sets with self-reachability
-  for (date,emails) in reverse(tdata.bydate) # need to do these in reverse order of time.
-    edges = _build_tofrom_edges(emails;keepcc,keepfauci)[1]
-    Rcopy = deepcopy(R) # need to make a copy because these aren't temporally ordered...
-    # TODO, I think you can just use two copies, since the data only gets bigger...
-    for (i,j) in edges
-      # i emails j, so extend the temporal path from i to everyone j can reach...
-      for k in R[j]
-        push!(Rcopy[i], k)
-      end
-    end
-
-    if expandstrongcomponents
-      scc_info = scomponents(sparse(first.(edges),last.(edges),1,n,n))
-      for (ci,componentsize) in enumerate(scc_info.sizes)
-        if componentsize > 2 # if component size is <= 2, we already handled it above since edges must exist
-          verts = findall(scc_info.map .== ci)
-          for (vi,vj) in Iterators.product(verts, verts)
-            for k in R[vj]
-              push!(Rcopy[vi], k)
-            end
-          end
-        end
-      end
-    end
-    R = Rcopy # swap...
-  end
-
-  # let's turn R into a matrix now...
-  return (R=_vector_of_sets_to_sparse(R; n=n), tdata...)
-end
+## Analysis 1: Temporal strong component.
 R1 = temporal_reachability(data;expandstrongcomponents=false)
 R2 = temporal_reachability(data)
-
 ## Find temporal components
 using DelimitedFiles
 Tc1 = min.(R1.R,R1.R')
@@ -232,86 +100,36 @@ Tcc_ids = C1
 @assert Tc1[Tcc_ids,Tcc_ids] == ones(length(Tcc_ids),length(Tcc_ids))
 ##
 println.(R1.names[Tcc_ids]);
-## Build the sequence of adjacency matrices on this subset of indices
-function build_temporal_graphs(data;
-    keepcc::Bool=true,keepfauci::Bool=true,
-    emailweight::Bool=false,keepduplicates::Bool=false,
-    subset=nothing,keepempty=false)
-  tdata = _emails_by_day_and_time(data;keepduplicates)
-  nfull = length(tdata.names)
-  if subset !== nothing
-    sids = sort!(unique(subset))
-    #idset =  Set(sids)
-    n = length(sids)
-  else
-    n = nfull
-    sids = Colon
-  end
-  SparseType = emailweight ? SparseMatrixCSC{Int,Float64} : SparseMatrixCSC{Int,Int}
-  T = Pair{Date,SparseType}[]
-  for (date,emails) in tdata.bydate
-    edges,weights = _build_tofrom_edges(emails; keepcc, keepfauci)
-    # TODO, could make this more efficient, but, ugh...
-    A = sparse(first.(edges),last.(edges), emailweight ? weights : 1, nfull, nfull)
-    A = dropzeros!(A[sids, sids]) # filter to subset
-    if keepempty
-      push!(T,date => A)
-    elseif nnz(A) > 0
-      push!(T,date => A)
-    end
-  end
 
-  return (T=T, names=tdata.names[sids], orgs=tdata.orgs[sids],
-    keepcc, keepfauci, emailweight, keepempty, keepduplicates,
-    duplicates=tdata.duplicates)
-end
+
+## Build the sequence of adjacency matrices on this subset of indices
+# The result here is a sequence of adjacency matrices, one per day.
 T = build_temporal_graphs(data; subset=Tcc_ids)
 
-## Try some fun layouts and movies...
+## Compare the collapsed temporal reachability graph to the rplied to graph
+# We remove Fauci from these comparisons.
+TG = (T..., A=sum(last.(T.T)) |> A->max.(A,A')) |>
+  x-> subset_and_mindegree_cc_filter(x, 2:size(x.A,1))# adjacency matrix sum
+TG = TG |> igraph_layout
+drawgraph(TG; markersize=15,alpha=0.5,linewidth=2,shownames=true,shorten=0.2)
+
+## Compare the replied to graph to the temporal strong component without Fauci
+RT = _build_email_repliedto_graph(data; keepfauci=false) |> igraph_layout
+drawgraph(RT; markersize=15,alpha=0.5,linewidth=2,shownames=true,shorten=0.2)
+
+##
+setdiff(TG.names, RT.names) # so all RT names are in TG...
+##
+setdiff(RT.names, TG.names) # so all RT names are in TG...
+## Okay, these are actually fairly different graphs!
+
+## Try and do a dynamic layout
 using NetworkLayout
 pos2xy(pos::Vector) = [first.(pos) last.(pos)]
-
-
-##
-F = sum(last.(T.T)) # adjacency matrix sum
-plot(draw_graph_lines(F,pos2xy(spring(F;iterations=20)))...,
-  framestyle=:none, legend=false)
-
-##
-#anim = @animate for pos in LayoutIterator(SFDP(;K=0.1,C=0.01,iterations=200), F)
-anim = @animate for pos in LayoutIterator(Spring(;initialtemp=0.2,C=0.2,iterations=1000), 10*F .- ones(size(F)...))
-  xy = pos2xy(pos)
-  plot(draw_graph_lines(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markersize=5, alpha=0.5,
-    framestyle=:none, legend=false)
-end every 10
-gif(anim, "anim.gif", fps=15)
-
-##
-function draw_graph_lines_tuple(A::SparseMatrixCSC, xy; shorten::Float64=0)
-  ei,ej = findnz(A)[1:2]
-  # find the line segments
-  lx = Vector{Float64}[]
-  ly = Vector{Float64}[]
-  for nz=1:length(ei)
-    src = ei[nz]
-    dst = ej[nz]
-    if shorten == 0
-      push!(lx, [xy[src,1], xy[dst,1]])
-      push!(ly, [xy[src,2], xy[dst,2]])
-    else
-      # view xy as a line, then
-      a = shorten
-      b = 1-shorten
-      push!(lx, [b*xy[src,1]+a*xy[dst,1], a*xy[src,1]+b*xy[dst,1]])
-      push!(ly, [b*xy[src,2]+a*xy[dst,2], a*xy[src,2]+b*xy[dst,2]])
-    end
-  end
-  return lx, ly
-end
-##
-plot(draw_graph_lines_tuple(F[2:end,2:end],xy[2:end,:])..., marker=:dot, markersize=5, alpha=0.5,
-  framestyle=:none, legend=false)
-## Try and do a dynamic layout
+#= This code is based on the Spring layout in NetworkLayout.jl,
+but modified to make it easier to hack. We can also tweak repulsive forces with R,
+there is no 'cooling' because we are doign temporal stuff, and also
+we can normalize the layout... =#
 using GeometryBasics: Point
 using LinearAlgebra
 function apply_forces(adj_matrix, old_pos = Vector{Point};
@@ -409,10 +227,11 @@ function dynamic_layout(T::NamedTuple;
   return output
 end
 rval = dynamic_layout(T;gamma=0.66,R=1.2,C=0.75,normalize=true,temp=0.005)
+##
 anim = @animate for (pos,mat,date) in rval
   #@show size(pos)
   matdraw = triu(mat,1)
-  plot(draw_graph_lines_tuple(matdraw,pos;shorten=0.1)...,
+  plot(draw_graph_lines_vector(matdraw,pos;shorten=0.1)...,
     line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
     framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800))
   scatter!(pos[:,1],pos[:,2], markersize=20, color=T.orgs, alpha=0.5,
@@ -423,8 +242,6 @@ anim = @animate for (pos,mat,date) in rval
   title!(string(date))
 end
 gif(anim, "anim.gif", fps=60)
-
-
 
 ## Multislice community detection
 # http://netwiki.amath.unc.edu/GenLouvain/GenLouvain
@@ -476,11 +293,11 @@ end
 M, slices = expand_to_slicetime_matrix(T)
 ##
 using HyperModularity
-@time cc = HyperModularity.LambdaLouvain(M, zeros(size(M,1)), 0.0)
+@time cc = HyperModularity.LambdaLouvain(M, zeros(size(M,1)), 0.0)[:,end]
 ##
-maximum(cc[:,end])
+maximum(cc)
 ##
-function compute_modularity(A::SparseMatrixCSC,c)
+function compute_modularity_direct(A::SparseMatrixCSC,c)
     obj = 0
     m = sum(nonzeros(A)/2)
     n = size(A,1)
@@ -502,25 +319,15 @@ function compute_modularity(A::SparseMatrixCSC,c)
     end
     return obj
 end
-compute_modularity(M,cc[:,end])
+compute_modularity_direct(M,cc[:,end])
 ## Assemble the data into a little heatmap...
-C = zeros(maximum(slices[1]), length(slices))
+C = zeros(Int,maximum(slices[1]), length(slices))
 for (i,slice) in enumerate(slices)
-  C[:,i] = cc[slice,end]
+  C[:,i] = cc[slice]
 end
 # permute by last slice
-p= sortperm(C[:,end])
+p= sortperm(C[:,1])
 heatmap(C[p,:],color=reverse(theme_palette(:default)[1:8]))
-ylabel!("Nodes in Temporal Strong Component")
-xticks!(1:length(T.T), string.(first.(T.T)), xrotation=90)
-## Show by orgs
-C = zeros(maximum(slices[1]), length(slices))
-for (i,slice) in enumerate(slices)
-  C[:,i] = cc[slice,end]
-end
-# permute by last slice
-p= sortperm(C[:,end])
-heatmap(T.orgs[p]*ones(1,100),color=reverse(theme_palette(:default)[1:8]))
 ylabel!("Nodes in Temporal Strong Component")
 xticks!(1:length(T.T), string.(first.(T.T)), xrotation=90)
 ##
@@ -533,13 +340,56 @@ p= sortperm(T.orgs)
 heatmap(C[p,:],color=reverse(theme_palette(:default)[1:8]))
 ylabel!("Nodes in Temporal Strong Component")
 xticks!(1:length(T.T), string.(first.(T.T)), xrotation=90)
+## Try and show on our visualization
+# This gets VERY hacky because we need to manually align the times.
+C = zeros(maximum(slices[1]), length(slices))
+for (i,slice) in enumerate(slices)
+  C[:,i] = cc[slice,end]
+end
+curslice=1
+slicedates = first.(T.T)
+anim = @animate for (pos,mat,date) in rval
+  #@show size(pos)
+  # find slice to get communitiies..
+  if slicedates[curslice] != date
+    print("Finding new slice for $date, from $curslice ", slicedates[curslice])
+    while slicedates[curslice] < date
+      curslice+=1
+    end
+    println("to $curslice ", slicedates[curslice])
+  end
+
+  matdraw = triu(mat,1)
+  plot(draw_graph_lines_vector(matdraw,pos;shorten=0.1)...,
+    line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
+    framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800))
+  scatter!(pos[:,1],pos[:,2], markersize=20, color=Int.(C[:,curslice]), alpha=0.5,
+    markerstrokewidth=0)
+  for i=1:length(T.names)
+    annotate!(pos[i,1],pos[i,2], (split(T.names[i], ",")[1], 7, :black))
+  end
+  title!(string(date))
+end
+gif(anim, "anim-mod.gif", fps=60)
+
+## Try and figure out cluster 5...
+# This assumes there is some real structure there...
+# It's around April 20 with Stover as a key member.
+println.(findall(C.==5));
+println.(collect(zip(findnz(T.T[85][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
+println.(collect(zip(findnz(T.T[86][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
+println.(collect(zip(findnz(T.T[87][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
+println.(collect(zip(findnz(T.T[88][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
 
 ##
-function myfunc(T::NamedTuple{Names,Types}) where {Names,Types, in(Names,:A)}
-  @show Names
-  @show "A in Names"
-end
-function myfunc(T::NamedTuple{Names,Types}) where {Names,Types, in(Names,:G)}
-  @show Names
-  @show "G in Names"
-end
+julia> T.names[31]
+"stover, kathy"
+
+julia> T.names[11]
+"routh, jennifer"
+
+julia> T.names[12]
+"folkers, greg"
+
+julia> T.names[19]
+"billet, courtney"

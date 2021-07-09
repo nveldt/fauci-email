@@ -30,6 +30,3 @@ end
 
 # and optimal normalized cut solution
 drawset!(G,ncut_S;markershape = :square,markersize = 8)
-
-## Exact min conductance set
-include("include/exact_conductance_jump.jl")

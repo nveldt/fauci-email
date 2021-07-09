@@ -25,7 +25,11 @@ function badtris(A::SparseMatrixCSC)
                     if k > j && neighind[k] > 0 # (i->j->k->i) by symmetry
                         parity = nz[nzi]*nz[nzi2]*nz[neighind[k]]
                         if parity < 0
-                            push!(tris, (i,j,k))
+                            if nz[nzi] < 0 && nz[nzi2] < 0 && nz[neighind[k]] < 0
+                                # --- isn't a bad triangle... it's okay... 
+                            else
+                                push!(tris, (i,j,k))
+                            end
                         end
                     end
                 end
