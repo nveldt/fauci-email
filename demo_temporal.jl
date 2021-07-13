@@ -42,49 +42,7 @@ Heuristic found optimal solution.
 # we happen to know how to characterize this one, we can prove
 # that we have the optimal with some simple code based on the
 # maxcore.
-function simple_clique_heuristic(A::SparseMatrixCSC)
-  cns = corenums(A)[1]
-  maxcore = maximum(cns)
-  maxcoreids = findall(cns .== maxcore)
-  C = greedy_clique(A[maxcoreids,maxcoreids])
-  if length(C) != maxcore
-    @warn("not maximum clique, so we don't have the largest temporal strong component")
-  end
-  return maxcoreids[collect(C)]
-end
-function greedy_clique(A::SparseMatrixCSC)
-  B = copy(A)
-  fill!(B.nzval, 1)
-  B = B - Diagonal(B)
-  dropzeros!(B)
-  @assert issymmetric(B)
-  d = vec(sum(B;dims=2))
-  # C is the current clique, F is the set of feasible vertices to add
-  # we pick the one with the largest degree.
-  function _expand_clique(C::Set{Int}, F::Set{Int})
-    maxd = 0
-    argmaxF = 0
-    for v in F
-      if d[v] > maxd
-        argmaxF = v
-        maxd = d[v]
-      end
-    end
-    push!(C,argmaxF)
-    # update F...
-    # remove everything in F that doesn't have a link to v.
-    filter!(u->B[u,argmaxF] == 1, F)
-    if length(F) > 0
-      return _expand_clique(C, F)
-    else
-      return C
-    end
-  end
-  # start that on the vertex of max-degree
-  C = Set((argmax(d),))
-  F = Set(findnz(B[:,first(C)])[1])
-  return _expand_clique(C,F)
-end
+
 C1 = simple_clique_heuristic(Tc1)
 C2 = simple_clique_heuristic(Tc2)
 
@@ -123,6 +81,20 @@ setdiff(TG.names, RT.names) # so all RT names are in TG...
 setdiff(RT.names, TG.names) # so all RT names are in TG...
 ## Okay, these are actually fairly different graphs!
 
+## Compute the temporal communicability scores
+# Peter Grindrod  1 , Mark C Parsons, Desmond J Higham, Ernesto Estrada
+# https://doi.org/10.1103/PhysRevE.83.046120
+function temporal_communicability(T::NamedTuple, a::Float64)
+  Q = prod(map(t->inv(Matrix(I-a*t[2])), T.T))
+  broadcast = vec(sum(Q,dims=2))
+  recv = vec(sum(Q,dims=1))
+  return (Q, broadcast, receive=recv, names=T.names)
+end
+tcomm = temporal_communicability(T, 0.2)
+##
+T.names[sortperm(tcomm.broadcast)[1:10]]
+##
+T.names[sortperm(tcomm.receive)[1:10]]
 ## Try and do a dynamic layout
 using NetworkLayout
 pos2xy(pos::Vector) = [first.(pos) last.(pos)]
@@ -381,15 +353,48 @@ println.(collect(zip(findnz(T.T[86][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
 println.(collect(zip(findnz(T.T[87][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
 println.(collect(zip(findnz(T.T[88][2])[1:2]...) ) .|> x->T.names[[x[1],x[2]]]);
 
+## Nate suggested longer times
+rvallong = dynamic_layout(T;gamma=0.66,R=1.2,C=0.75,normalize=true,temp=0.002,niter=40,niterease=10)
+
 ##
-julia> T.names[31]
-"stover, kathy"
+C = zeros(maximum(slices[1]), length(slices))
+for (i,slice) in enumerate(slices)
+  C[:,i] = cc[slice,end]
+end
+curslice=1
+slicedates = first.(T.T)
+ndelay = 30 # needs to be set based on the layout... (neaseiter + half niter)
+cursliceupdate = 1 # init here to update the very first time...
+anim = @animate for (pos,mat,date) in rval[1:600]
+  #@show size(pos)
+  # find slice to get communitiies..
+  # need to be careful here because we want to delay the update
+  if cursliceupdate > 0 # we are delaying
+    cursliceupdate -= 1
+    if cursliceupdate == 0  # apply the update
+      while slicedates[curslice] < date
+        curslice+=1
+      end
+    end
+  elseif slicedates[curslice] != date && cursliceupdate == 0
+    #=print("Finding new slice for $date, from $curslice ", slicedates[curslice])
+    while slicedates[curslice] < date
+      curslice+=1
+    end
+    println("to $curslice ", slicedates[curslice], " in ", ndelay, "frames")
+    =#
+    cursliceupdate = ndelay
+  end
 
-julia> T.names[11]
-"routh, jennifer"
-
-julia> T.names[12]
-"folkers, greg"
-
-julia> T.names[19]
-"billet, courtney"
+  matdraw = triu(mat,1)
+  plot(draw_graph_lines_vector(matdraw,pos;shorten=0.1)...,
+    line_z = -nonzeros(matdraw)', linewidth=2*nonzeros(matdraw)', alpha=0.5,
+    framestyle=:none, legend=false,colorbar=false, clims=(-1,0), size=(800,800))
+  scatter!(pos[:,1],pos[:,2], markersize=20, color=Int.(C[:,curslice]), alpha=0.5,
+    markerstrokewidth=0)
+  for i=1:length(T.names)
+    annotate!(pos[i,1],pos[i,2], (split(T.names[i], ",")[1], 7, :black))
+  end
+  title!(string(date))
+end every 2
+gif(anim, "anim-mod-long.gif", fps=60)

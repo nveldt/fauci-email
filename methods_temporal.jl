@@ -104,6 +104,50 @@ function temporal_reachability(data; keepcc::Bool=true,
   return (R=_vector_of_sets_to_sparse(R; n=n), tdata...)
 end
 
+function simple_clique_heuristic(A::SparseMatrixCSC)
+  cns = corenums(A)[1]
+  maxcore = maximum(cns)
+  maxcoreids = findall(cns .== maxcore)
+  C = greedy_clique(A[maxcoreids,maxcoreids])
+  if length(C) != maxcore
+    @warn("not maximum clique, so we don't have the largest temporal strong component")
+  end
+  return maxcoreids[collect(C)]
+end
+function greedy_clique(A::SparseMatrixCSC)
+  B = copy(A)
+  fill!(B.nzval, 1)
+  B = B - Diagonal(B)
+  dropzeros!(B)
+  @assert issymmetric(B)
+  d = vec(sum(B;dims=2))
+  # C is the current clique, F is the set of feasible vertices to add
+  # we pick the one with the largest degree.
+  function _expand_clique(C::Set{Int}, F::Set{Int})
+    maxd = 0
+    argmaxF = 0
+    for v in F
+      if d[v] > maxd
+        argmaxF = v
+        maxd = d[v]
+      end
+    end
+    push!(C,argmaxF)
+    # update F...
+    # remove everything in F that doesn't have a link to v.
+    filter!(u->B[u,argmaxF] == 1, F)
+    if length(F) > 0
+      return _expand_clique(C, F)
+    else
+      return C
+    end
+  end
+  # start that on the vertex of max-degree
+  C = Set((argmax(d),))
+  F = Set(findnz(B[:,first(C)])[1])
+  return _expand_clique(C,F)
+end
+
 function build_temporal_graphs(data;
     keepcc::Bool=true,keepfauci::Bool=true,
     emailweight::Bool=false,keepduplicates::Bool=false,
