@@ -4,7 +4,6 @@ gurobi_env = Gurobi.Env()
 
 function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
     m = sum(nonzeros(A))/2
-    d = vec(sum(A,dims = 2))
     n = size(A,1)
 
     if lam1 == 0.0
@@ -14,20 +13,32 @@ function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
         lam = lam1
         println("Starting with lambda = $lam.")
     end
-    
-    c, D =  LazyExactLambdaCC(A,lam,false,verbose)
+      
+    searching = true
     Clusterings = Vector{Vector{Int64}}()
     Lambdas = Vector{Float64}()
-    push!(Lambdas,lam)
-    BestS = 0
-    while maximum(c) > 2
-        println("\nDecreasing lambda, and re-solving.\n")
-        push!(Clusterings,c)
-        lam, whichclus = compute_min_norm_cut(A,c,true)
-        BestS = vec(findall(x->x==whichclus,c)) 
-        push!(Lambdas,lam)
+    Best_ncut = 1
+    while searching
+
+        # 1. Solve LambdaCC objective with parameter lam
         c, D =  LazyExactLambdaCC(A,lam,false,verbose)
+
+        # Clusterings[i] = clustering obtained for parameter Lambdas[i]
+        push!(Lambdas,lam)
+        push!(Clusterings,c)
+
+        # 2. Extract best scaled normalized cut, and updated lam
+        lam, whichclus = compute_min_norm_cut(A,c,true)
+
+        # 3. Save set if improvement found. Terminate otherwise
+        if Best_ncut > lam
+            Best_ncut = lam
+            BestS = vec(findall(x->x==whichclus,c)) 
+        else
+            searching = false
+        end
     end
+
     return Clusterings, Lambdas, BestS
 end
 
@@ -55,7 +66,7 @@ function compute_min_norm_cut(A,c,returnwhich = false)
 end
 
 function set_stats(A::SparseMatrixCSC{Float64,Int64},
-    S::Vector{Int64},volA::Float64)
+    S::Vector{Int64},volA::Float64=0.0)
 
     if volA == 0.0
         volA = sum(A.nzval)
@@ -63,7 +74,7 @@ function set_stats(A::SparseMatrixCSC{Float64,Int64},
 
     if length(S) == size(A,1)
         # then we have an indicator vector
-        S = findall(x->x!=0,eS)
+        S = findall(x->x!=0,S)
         AS = A[:,S]
     else
         # then we have a subset
