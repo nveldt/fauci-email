@@ -18,6 +18,7 @@ function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
     Clusterings = Vector{Vector{Int64}}()
     Lambdas = Vector{Float64}()
     Best_ncut = 1
+    BestS = 0
     while searching
 
         # 1. Solve LambdaCC objective with parameter lam
