@@ -109,38 +109,24 @@ function _write_json_graph_sequence(filename::String, G::NamedTuple)
   open(filename, "w") do f
     write(f, "{\n")
     write(f, "\"vertices\": ", string(nverts), ",\n")
-    write(f, "\"graphs\": ", string(length()), ",\n")
+    write(f, "\"graphs\": ", string(length(G.T)), ",\n")
     write(f, "\"sequencedata\": [")
-      for (gi, (date, g)) in enumerate(G.T)
-        nedges = nnz(g)
-        write(f, "{\n")
-        write(f, "\"edges\": ", string(nedges), ",\n")
-        _write_edgedata(f, g, nedges; last=true)
-        write(f, "}\n")
-      end
+    for (gi, (date, g)) in enumerate(G.T)
+      nedges = nnz(g)
+      write(f, "{\n")
+      write(f, "\"edges\": ", string(nedges), ",\n")
+      _write_edgedata(f, g, nedges; last=true)
+      write(f, gi < length(G.T) ? "},\n" : "}\n")
     end
+
     write(f, "],", "\n")
-    write(f, "\"edges\": ", string(nedges), ",\n")
-    write(f, "\"edgedata\": [", "\n")
-    # ugh, annoying to get this precise for JSON with the last comma missing...
-    edata = zip(findnz(G.A)...)
-    @assert(length(edata) == nedges)
-    for (ei,(i,j,w)) in enumerate(edata)
-      write(f, string(i-1), ", ", string(j-1), ", ", string(w), ei < nedges ? ",\n" : "\n")
-    end
-    write(f, "],", "\n")
-    write(f, "\"labels\": [", "\n")
+    @assert issorted(first.(G.T))
+    _write_list(f, "dates", first.(G.T); map=JSON.json)
     @assert(length(labels) == nverts)
-    for (li,n) in enumerate(labels)
-      write(f, JSON.json(n), li < nverts ? ",\n" : "\n")
-    end
-    write(f, "],", "\n")
-    write(f, "\"orgs\": [", "\n")
+    _write_list(f, "labels", labels; map=JSON.json)
     @assert(length(orgs) == nverts)
-    for (oi,o) in enumerate(orgs)
-      write(f, string(o), oi < nverts ? ",\n" : "\n")
-    end
-    write(f, "]", "\n")
+    _write_list(f, "orgs", orgs; last=true)
     write(f, "}\n")
   end
 end
+_write_json_graph_sequence("fauci-email-bydate-sequence-tofrom.json", T)
