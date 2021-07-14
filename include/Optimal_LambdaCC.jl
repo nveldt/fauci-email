@@ -4,7 +4,6 @@ gurobi_env = Gurobi.Env()
 
 function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
     m = sum(nonzeros(A))/2
-    d = vec(sum(A,dims = 2))
     n = size(A,1)
 
     if lam1 == 0.0
@@ -14,20 +13,33 @@ function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
         lam = lam1
         println("Starting with lambda = $lam.")
     end
-    
-    c, D =  LazyExactLambdaCC(A,lam,false,verbose)
+      
+    searching = true
     Clusterings = Vector{Vector{Int64}}()
     Lambdas = Vector{Float64}()
-    push!(Lambdas,lam)
+    Best_ncut = 1
     BestS = 0
-    while maximum(c) > 2
-        println("\nDecreasing lambda, and re-solving.\n")
-        push!(Clusterings,c)
-        lam, whichclus = compute_min_norm_cut(A,c,true)
-        BestS = vec(findall(x->x==whichclus,c)) 
-        push!(Lambdas,lam)
+    while searching
+
+        # 1. Solve LambdaCC objective with parameter lam
         c, D =  LazyExactLambdaCC(A,lam,false,verbose)
+
+        # Clusterings[i] = clustering obtained for parameter Lambdas[i]
+        push!(Lambdas,lam)
+        push!(Clusterings,c)
+
+        # 2. Extract best scaled normalized cut, and updated lam
+        lam, whichclus = compute_min_norm_cut(A,c,true)
+
+        # 3. Save set if improvement found. Terminate otherwise
+        if Best_ncut > lam
+            Best_ncut = lam
+            BestS = vec(findall(x->x==whichclus,c)) 
+        else
+            searching = false
+        end
     end
+
     return Clusterings, Lambdas, BestS
 end
 
@@ -55,7 +67,7 @@ function compute_min_norm_cut(A,c,returnwhich = false)
 end
 
 function set_stats(A::SparseMatrixCSC{Float64,Int64},
-    S::Vector{Int64},volA::Float64)
+    S::Vector{Int64},volA::Float64=0.0)
 
     if volA == 0.0
         volA = sum(A.nzval)
@@ -63,7 +75,7 @@ function set_stats(A::SparseMatrixCSC{Float64,Int64},
 
     if length(S) == size(A,1)
         # then we have an indicator vector
-        S = findall(x->x!=0,eS)
+        S = findall(x->x!=0,S)
         AS = A[:,S]
     else
         # then we have a subset
@@ -441,4 +453,147 @@ function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
         end
     end
     return extractClustering(D), D
+end
+
+
+function LazyExactLambdaCCGurobi(A,lam,outputflag = true,verbose = true)
+    n = size(A,1)
+    d = vec(sum(A,dims=1))
+    W = zeros(n,n)
+    for i = 1:n
+        for j = 1:n
+            W[i,j] = A[i,j]-d[i]*d[j]*lam
+        end
+    end
+    #nvars = div(n*(n-1), 2)
+    # build varmap and obj
+    vmap = -ones(Int,n,n)
+    obj = Float64[]
+    nvars = 0
+    for j=1:n
+        for i=1:j-1
+            nvars += 1
+            vmap[i,j] = nvars-1
+            vmap[j,i] = nvars-1
+            push!(obj, W[i,j])
+        end
+    end
+    vtypes = repeat(GRB_BINARY, nvars)
+    aptr = Ref{Ptr{Cvoid}}()
+    err = GRBnewmodel(gurobi_env, aptr, "LazyLambdaCC", nvars, obj, C_NULL, C_NULL, vtypes, C_NULL)
+    m = aptr[]
+
+    try
+
+    cind = Int32[0,0,0]
+    cval = Float64[0,0,0]
+    for i = 1:n
+        NeighbsI = findall(x->x>0,(A[:,i]))
+        numNeighbs = size(NeighbsI,1)
+        for u = 1:numNeighbs-1
+            j = NeighbsI[u]
+            for v = u+1:numNeighbs
+                k = NeighbsI[v]
+                if A[j,k] == 0
+                    # Then we have a bad triangle: (i,j), (i,k) \in E
+                    # but (j,k) is not an edge, so D(j,k) wants to be 1
+                    #assert(i<j<k)
+                    #@constraint(m,x[min(j,k),max(j,k)] - x[min(i,k),max(i,k)] - x[min(i,j),max(i,j)] <= 0)
+                    cind[1] = vmap[min(j,k),max(j,k)]
+                    cind[2] = vmap[min(i,k),max(i,k)]
+                    cind[3] = vmap[min(i,j),max(i,j)]
+                    cval[1] = 1
+                    cval[2] = -1
+                    cval[3] = -1
+                    error = GRBaddconstr(m, 3, cind, cval, GRB_LESS_EQUAL, 0.0, C_NULL)
+                end
+            end
+        end
+    end
+
+    # Find intial first solution
+    if verbose
+        println("First round of optimization")
+    end
+    #JuMP.optimize!(m)
+    GRBoptimize(m)
+    robj = Ref{Float64}(0.0)
+    GRBgetdblattr(m, GRB_DBL_ATTR_OBJVAL, robj)
+    obj = robj[]
+    soln = zeros(nvars)
+    GRBgetdblattrarray(m, GRB_DBL_ATTR_X, 0, nvars, soln)
+    D = zeros(n,n)
+    for j=1:n
+        for i=1:j-1
+            D[i,j] = soln[vmap[i,j]+1]
+            D[j,i] = soln[vmap[i,j]+1]
+        end
+    end
+
+    while true
+        # x will naturally be upper triangular, but 'find_violations'  wants lower triangular
+          #D = Matrix(JuMP.value.(x)')
+
+         # Store violating tuples in a vector
+         violations = Vector{Tuple{Int,Int,Int}}()
+
+         find_violations!(D,violations)
+
+         # Iterate through and add constraints
+         numvi = size(violations,1)
+         if verbose
+            print("Adding in $numvi violated constraints.")
+         end
+
+         # Violations (a,b,c) are ordered so that a < b, and (a,b) is the value
+         # that needs to be positive in the inequality:
+         # x_ab - x_ac - x_bc <= 0.
+         # The other two (b and c) could satisfy either b < c or c <= b.
+         # We need to make sure we are only placing constraints in the upper
+         # triangular portion of the matrix.
+         # We do so by just calling min and max on pairs of nodes
+         for v in violations
+             #assert(v[1]<v[2])
+             cind[1] = vmap[v[1],v[2]]
+             cind[2] = vmap[min(v[1],v[3]),max(v[1],v[3])]
+             cind[3] = vmap[min(v[2],v[3]),max(v[2],v[3])]
+             cval[1] = 1
+             cval[2] = -1
+             cval[3] = -1
+             #@show cind, cval
+             error = GRBaddconstr(m, 3, cind, cval, GRB_LESS_EQUAL, 0.0, C_NULL)
+             #z = sparsevec(cind.+1, cval, nvars)
+             #@show z'*soln
+             #@constraint(m,x[v[1],v[2]] - x[min(v[1],v[3]),max(v[1],v[3])] - x[min(v[2],v[3]),max(v[2],v[3])] <= 0)
+         end
+         if numvi == 0
+             if verbose
+                println(" Optimal solution found.")
+             end
+             break
+         end
+         if verbose
+            println(" And re-solving the ILP.")
+         end
+         GRBupdatemodel(m)
+         err = GRBoptimize(m)
+         #@show err
+         robj = Ref{Float64}(0.0)
+         GRBgetdblattr(m, GRB_DBL_ATTR_OBJVAL, robj)
+         obj = robj[]
+         #@show "obj after solve", obj
+         GRBgetdblattrarray(m, GRB_DBL_ATTR_X, 0, nvars, soln)
+         for j=1:n
+             for i=1:j-1
+                 D[i,j] = soln[vmap[i,j]+1]
+                 D[j,i] = soln[vmap[i,j]+1]
+             end
+         end
+
+     end
+     return extractClustering(D), D
+ finally
+     #@show "freemodel here!"
+     GRBfreemodel(m)
+ end
 end
