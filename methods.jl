@@ -5,7 +5,7 @@ using JSON
 
 data = JSON.parsefile("fauci-email-graph.json")
 include("include/FlowSeed.jl")
-include("include/PushRelabelMaxFlow.jl")
+include("include/PushRelabelMaxflow.jl")
 
 function stcut(A::SparseMatrixCSC, s::Int, t::Int; smallside::Bool = true)
     F = maxflow(Float64.(A),s,t,0.0)
