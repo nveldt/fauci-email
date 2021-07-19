@@ -92,6 +92,9 @@ G = _build_email_tofrom_graph(data; maxset=5, keepfauci=false)
 _write_simple_json("fauci-email-tofrom-5.json", G)
 
 ##
+G = _build_email_tofrom_graph(data; maxset=5, keepfauci=false, keepcc=true)
+_write_simple_json("fauci-email-tofrom-cc-5.json", G)
+##
 G = _build_email_repliedto_graph(data; keepfauci=false)
 _write_simple_json("fauci-email-repliedto.json", G)
 ##
@@ -99,7 +102,12 @@ G = _build_email_hypergraph_projection(data;
   hyperedgeparts=("sender","recipients"), mindegree=2)
 _write_simple_json("fauci-email-hypergraph-projection.json", G)
 ##
+G = _build_email_hypergraph_projection(data;
+  hyperedgeparts=("sender","recipients","cc"), mindegree=2)
+_write_simple_json("fauci-email-hypergraph-projection-cc.json", G)
+##
 Tcc_ids = temporal_reachability(data) |> R->min.(R.R, R.R') |> simple_clique_heuristic
+
 T = build_temporal_graphs(data; subset=Tcc_ids)
 function _write_json_graph_sequence(filename::String, G::NamedTuple)
   nverts = size(G.T[1][2],1)

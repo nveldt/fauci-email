@@ -450,3 +450,29 @@ end
 function print_thread(data::Dict, tid::Int)
   print_thread(data["emails"][tid], data["names"])
 end
+
+##
+function _edgedata_to_sparse(gdata, n::Integer)
+  if haskey(gdata, "edges") && haskey(gdata, "edgedata")
+    m = gdata["edges"]
+    X = reshape(Float64.(gdata["edgedata"]), 3, m)
+    A = sparse(Int.(X[1,:]).+1, Int.(X[2,:]).+1, X[3,:], n, n)
+  else
+    throw(ArgumentError("dictionary doesn't have the right keys"))
+  end
+end
+function _read_final(fn::String)
+  gdata = JSON.parsefile(fn)
+  n = gdata["vertices"]
+  A = _edgedata_to_sparse(gdata, n)
+  # find all instances of edgedata and convert to adjaency matrices...
+  return (A=A, names=string.(gdata["labels"]), orgs=Int.(gdata["orgs"]))
+end
+
+function _read_final_sequence(fn::String)
+  gdata = JSON.parsefile(fn)
+  n = gdata["vertices"]
+  As = _edgedata_to_sparse.(gdata["sequence"], n)
+  # find all instances of edgedata and convert to adjaency matrices...
+  return (T=As, dates=Date.(gdata["dates"]), names=string.(gdata["labels"]), orgs=Int.(gdata["orgs"]))
+end
