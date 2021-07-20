@@ -48,7 +48,7 @@ function _write_score_table(results, order_and_titles)
     println("%")
     println("% -- ", key)
     println("%")
-    println("\\begin{tabular}{*{$nresults}{p{16pt}@{}}p{72pt}}")
+    println("\\begin{tabular}{*{$nresults}{p{16pt}@{}}p{112pt}}")
     println("\\toprule")
     println("\\multicolumn{$(nresults+1)}{c}{$title} \\\\")
     println("\\midrule")
@@ -66,7 +66,7 @@ function _write_score_table(results, order_and_titles)
         end
         print(" & ")
       end
-      println(n, " \\\\")
+      println("$n, $(round(v,digits=6))", " \\\\")
     end
     println("\\bottomrule")
     println("\\end{tabular}")

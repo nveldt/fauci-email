@@ -243,13 +243,6 @@ function _build_email_repliedto_graph(data;
       mindegree, keepfauci, emailweight)
 end
 #F = _build_email_tofrom_graph(data; mindegree=0, keepfauci=false, maxset=5)
-##
-function build_graphs(data)
-  faucifoia = Dict{String,Any}()
-  faucifoia["tofrom"] = _build_tofrom(data)
-  faucifoia["tofrom-hole"]
-  return results
-end
 
 ##
 function densify_graph_groups(A,groups; within_group_deg::Int=ceil(Int,length(unique(groups))),rng=Random.MersenneTwister(0))
@@ -421,8 +414,6 @@ function showlabel!(G::NamedTuple, name::String)
   annotate!(G.xy[id,1],G.xy[id,2],G.names[id])
 end
 
-
-
 ##
 function print_email(email, names; text::Bool=true)
   fromname = names[email["sender"]+1]
@@ -450,6 +441,53 @@ end
 function print_thread(data::Dict, tid::Int)
   print_thread(data["emails"][tid], data["names"])
 end
+
+## ranking display helpers
+function _rank_in_others(name,results,keyorder)
+  # name - the person to get the rank of
+  # results - the dictionary of results
+  # myresult - the tag for my result in the results dictionary
+  map(key -> begin
+      r = results[key]
+      if !(name in r.names)
+        return (key => missing)
+      end
+      p = sortperm(r.x, rev=true)
+      return (key => findfirst(r.names[p] .== name))
+    end, keyorder)
+end
+function _write_score_table(results, order_and_titles)
+  nresults = length(order_and_titles)
+  for (key,title) in order_and_titles
+    r = results[key]
+    println("%")
+    println("% -- ", key)
+    println("%")
+    println("\\begin{tabular}{*{$nresults}{p{16pt}@{}}p{112pt}}")
+    println("\\toprule")
+    println("\\multicolumn{$(nresults+1)}{c}{$title} \\\\")
+    println("\\midrule")
+    for (n,v) in r.topk # name and value
+      in_others = _rank_in_others(n,results,first.(order_and_titles))
+      #@show n, v
+      #@show in_others
+      for (key_other, rank_in_other) in in_others
+        if key_other == key
+          print("\\textcolor{LightGray}{")
+        end
+        print(ismissing(rank_in_other) ? "--" :  rank_in_other)
+        if key_other == key
+          print("}")
+        end
+        print(" & ")
+      end
+      println("$n, $(round(v,digits=6))", " \\\\")
+    end
+    println("\\bottomrule")
+    println("\\end{tabular}")
+  end
+end
+
 
 ##
 function _edgedata_to_sparse(gdata, n::Integer)
