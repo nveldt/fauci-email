@@ -2,6 +2,7 @@
 using LinearAlgebra
 using MatrixNetworks
 using JSON
+using DelimitedFiles
 using Printf
 
 data = JSON.parsefile("fauci-email-graph.json")
@@ -409,9 +410,9 @@ function drawset!(G::NamedTuple, S; kwargs...)
   scatter!(G.xy[S,1],G.xy[S,2];hover=G.names[S], markerstrokewidth=0,kwargs...)
 end
 
-function showlabel!(G::NamedTuple, name::String)
+function showlabel!(G::NamedTuple, name::String, args...; kwargs...)
   id = nodeid(G,name)
-  annotate!(G.xy[id,1],G.xy[id,2],G.names[id])
+  annotate!(G.xy[id,1],G.xy[id,2],Plots.text(G.names[id], args...; kwargs...))
 end
 
 ##
