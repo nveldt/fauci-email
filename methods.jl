@@ -52,12 +52,21 @@ using PyCall
 using Conda
 using Random
 const igraph = pyimport_conda("igraph","python-igraph","conda-forge")
-function igraph_layout(A::SparseMatrixCSC{T}, layoutname::AbstractString="fr") where T
+const pyrandom = pyimport("random")
+function igraph_layout(A::SparseMatrixCSC{T}, layoutname::AbstractString="fr";
+    random::Bool=true) where T
     ei,ej,ew = findnz(A)
     edgelist = [(ei[i]-1,ej[i]-1) for i = 1:length(ei)]
     nverts = size(A)
     G = igraph.Graph(nverts, edges=edgelist, directed=false)
-    xy = G.layout(layoutname)
+    if random
+      xy = G.layout(layoutname)
+    else
+      pyrngstate = pyrandom.getstate()
+      pyrandom.seed(0)
+      xy = G.layout(layoutname)
+      pyrandom.setstate(pyrngstate)
+    end
     xy = [Float64(xy[i][j]) for i in 1:length(xy),  j in 1:length(xy[1])]
 end
 
@@ -246,6 +255,11 @@ end
 #F = _build_email_tofrom_graph(data; mindegree=0, keepfauci=false, maxset=5)
 
 ##
+function _simple_graph(G::NamedTuple)
+  return (G..., A = spones!(dropzeros!(G.A - Diagonal(G.A))))
+end
+
+##
 function densify_graph_groups(A,groups; within_group_deg::Int=ceil(Int,length(unique(groups))),rng=Random.MersenneTwister(0))
   A1 = spones(A)
   ngroups = maximum(groups)
@@ -328,8 +342,8 @@ spones(A::SparseMatrixCSC) = spones!(copy(A))
 stcut(G::NamedTuple, s::String, t::String) = stcut(G.A, nodeid(G,s), nodeid(G,t))
 stcut(f::Function, G::NamedTuple, s::String, t::String) = stcut(f(G.A), nodeid(G,s), nodeid(G,t))
 
-function igraph_layout(G::NamedTuple,layout="fr")
-  xy = igraph_layout(G.A)
+function igraph_layout(G::NamedTuple,layout="fr";random::Bool=true)
+  xy = igraph_layout(G.A, layout; random)
   return (G..., xy=xy)
 end
 
@@ -410,9 +424,9 @@ function drawset!(G::NamedTuple, S; kwargs...)
   scatter!(G.xy[S,1],G.xy[S,2];hover=G.names[S], markerstrokewidth=0,kwargs...)
 end
 
-function showlabel!(G::NamedTuple, name::String, args...; kwargs...)
+function showlabel!(G::NamedTuple, name::String, args...; offset::Int=0, kwargs...)
   id = nodeid(G,name)
-  annotate!(G.xy[id,1],G.xy[id,2],Plots.text(G.names[id], args...; kwargs...))
+  annotate!(G.xy[id,1],G.xy[id,2],Plots.text(repeat(" ",offset)*G.names[id], args...; kwargs...))
 end
 
 ##
@@ -500,7 +514,7 @@ function _edgedata_to_sparse(gdata, n::Integer)
     throw(ArgumentError("dictionary doesn't have the right keys"))
   end
 end
-function _read_final(fn::String)
+function _read_final(fn::AbstractString)
   gdata = JSON.parsefile(fn)
   n = gdata["vertices"]
   A = _edgedata_to_sparse(gdata, n)
@@ -508,7 +522,29 @@ function _read_final(fn::String)
   return (A=A, names=string.(gdata["labels"]), orgs=Int.(gdata["orgs"]))
 end
 
-function _read_final_sequence(fn::String)
+function _read_products(fn::AbstractString)
+  p = JSON.parsefile(fn)
+  if haskey(p,"xy")
+    p["xy"] = hcat(p["xy"]...)
+  end
+  p["ncut"] = findall(p["ncut"] .> 0)
+  p["cond"] = findall(p["cond"]  .> 0)
+  p["spectral"] =findall(p["spectral"]  .> 0)
+  p["modularity"] = Int.(p["modularity"]).+1
+  # see https://discourse.julialang.org/t/how-to-make-a-named-tuple-from-a-dictionary/10899/14
+  return NamedTuple{Tuple(Symbol.(keys(p)))}(values(p))
+  #return (;p...) # make  a dictionary into a named tuple
+end
+
+function _read_final_with_products(fn::AbstractString)
+  G = _read_final(fn)
+  pw = _read_products(splitext(fn)[1]*"-products-weighted.json")
+  ps = _read_products(splitext(fn)[1]*"-products-simple.json")
+  return (G..., products=(simple=ps, weighted=pw), xy=ps.xy)
+end
+
+
+function _read_final_sequence(fn::AbstractString)
   gdata = JSON.parsefile(fn)
   n = gdata["vertices"]
   As = _edgedata_to_sparse.(gdata["sequence"], n)
