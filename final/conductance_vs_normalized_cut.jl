@@ -40,7 +40,7 @@ savefig("figures/cond-vs-ncut.pdf")
 ##
 stcut_S = stcut(G, "collins", "conrad")
 drawgraph(G, pointcolor=:none, label="", size=(350,350))
-drawset!(G, stcut_S, label="Min Conductance", marker=:star,
+drawset!(G, stcut_S, label="Collins-Conrad cut", marker=:star,
   markersize=4, color=3, markerstrokecolor=3)
 showlabel!(G, "conrad", 7, :left, rotation=15)
 showlabel!(G, "collins", 7, :left, rotation=15)
