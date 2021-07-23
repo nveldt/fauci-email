@@ -276,7 +276,7 @@ function densify_graph_groups(A,groups; within_group_deg::Int=ceil(Int,length(un
 
     if gd >= target_deg
       # move it halfway to max possible
-      target_deg = 0.5*target_deg + 0.5*length(Gv)
+      target_deg = 0.5*gd + 0.5*length(Gv)
     end
     erp = min((target_deg - gd)/length(Gv),1)
     println("group $(gi) size=$(length(Gv))  within_avg_deg = $(gd)   target_within=$(target_deg)  erprob=$(erp)")
@@ -424,9 +424,10 @@ function drawset!(G::NamedTuple, S; kwargs...)
   scatter!(G.xy[S,1],G.xy[S,2];hover=G.names[S], markerstrokewidth=0,kwargs...)
 end
 
-function showlabel!(G::NamedTuple, name::String, args...; offset::Int=0, kwargs...)
+function showlabel!(G::NamedTuple, name::String, args...; offset::Int=0, fontargs=(;), kwargs...)
   id = nodeid(G,name)
-  annotate!(G.xy[id,1],G.xy[id,2],Plots.text(repeat(" ",offset)*G.names[id], args...; kwargs...))
+  annotate!(G.xy[id,1],G.xy[id,2],
+    Plots.text(repeat(" ",offset)*G.names[id], args...; fontargs...); kwargs...)
 end
 
 ##

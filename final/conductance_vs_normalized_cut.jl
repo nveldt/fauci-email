@@ -2,15 +2,21 @@ include("../methods.jl")
 include("../include/exact_conductance_jump.jl")
 include("../include/Optimal_LambdaCC.jl")
 ## Get graph
-G = _read_final("fauci-email-tofrom-cc-5.json") |>
-        G -> (G..., A = spones!(G.A - Diagonal(G.A))) |> # remove weights and diagonals
-        G -> (G..., xy = readdlm("fauci-email-tofrom-cc-5-modularity.xy"))
+#G = _read_final("fauci-email-tofrom-cc-5.json") |>
+        #G -> (G..., A = spones!(G.A - Diagonal(G.A))) |> # remove weights and diagonals
+        #G -> (G..., xy = readdlm("fauci-email-tofrom-cc-5-modularity.xy"))
+G = _read_final_with_products("fauci-email-tofrom-cc-5.json")
+G = _simple_graph(G)
+G = (G..., xy=G.products.simple.xy)
 ## Use Exact modularity and group-based layout to make the vis easier...
 drawgraph(G, size=(350,350))
 ## Exact conductance
-cond_S, cond = exact_conductance(G.A)
+#cond_S, cond = exact_conductance(G.A)
+cond_S = G.products.simple.cond
 ## This really does take a while...
-Clus, Lams, ncut_S = exact_normalized_cut(G.A)
+#Clus, Lams, ncut_S = exact_normalized_cut(G.A)
+ncut_S = G.products.simple.ncut
+
 ## compute additional set statistics.
 more_set_stats(A::SparseMatrixCSC, S) = begin
 """ Augument set_stats with ncut, sparsity, expansion scores. """
@@ -26,15 +32,20 @@ end
 
 cond_S_vals = more_set_stats(G.A, cond_S)
 ncut_S_vals = more_set_stats(G.A, ncut_S)
-drawgraph(G, pointcolor=:none, label="", size=(350,350))
-drawset!(G, S, label="Min Conductance", marker=:star,
-  markersize=4, color=3, markerstrokecolor=3)
-drawset!(G, ncut_S, label="Normalized Cut", marker=:square,
-  markersize=2.5, color=2, markerstrokecolor=2)
-showlabel!(G, "conrad", 7, :left, rotation=15)
-showlabel!(G, "colucci", 7, :left, rotation=15)
-showlabel!(G, "collins", 7, :left, rotation=15)
-plot!(legend=:bottomleft, legendfontsize=9)
+drawgraph(G, pointcolor=:none, label="", size=(350,350), linecolor=:black)
+
+drawset!(G, cond_S,
+  marker=:square,
+  markersize=2, color=4, markerstrokecolor=:black,  markerstrokewidth=0.5, label="Min Conductance-Conrad")
+
+drawset!(G, ncut_S,
+  marker=:diamond,
+  markersize=3.5, color=2, markerstrokecolor=:black, markerstrokewidth=0.5, label="Normalized Cut")
+
+showlabel!(G, "conrad", 7, :left; fontargs=(;rotation=-15), offset=2)
+showlabel!(G, "colucci", 7, :left; fontargs=(;rotation=-15), offset=2)
+showlabel!(G, "collins", 7, :left; fontargs=(;rotation=-15), offset=2)
+plot!(legend=:outside, legendfontsize=9, margin=-20mm)
 ##
 savefig("figures/cond-vs-ncut.pdf")
 ##
