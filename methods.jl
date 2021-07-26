@@ -70,6 +70,16 @@ function igraph_layout(A::SparseMatrixCSC{T}, layoutname::AbstractString="fr";
     xy = [Float64(xy[i][j]) for i in 1:length(xy),  j in 1:length(xy[1])]
 end
 
+function igraph_betweenness(A::SparseMatrixCSC{T}) where T
+  ei,ej,ew = findnz(A)
+  edgelist = [(ei[i]-1,ej[i]-1) for i = 1:length(ei)]
+
+  nverts = size(A)
+  G = igraph.Graph(nverts, edges=edgelist, directed=false)
+  bc = G.betweenness()
+  return bc
+end
+
 function _mindegree_and_cc_filter(A;mindegree=0,weightdegree=false)
   if weightdegree
     d = vec(sum(A;dims=2))
