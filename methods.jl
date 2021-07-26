@@ -434,10 +434,14 @@ function drawset!(G::NamedTuple, S; kwargs...)
   scatter!(G.xy[S,1],G.xy[S,2];hover=G.names[S], markerstrokewidth=0,kwargs...)
 end
 
-function showlabel!(G::NamedTuple, name::String, args...; offset::Int=0, fontargs=(;), kwargs...)
-  id = nodeid(G,name)
+function showlabel!(G::NamedTuple, findname::String, args...; offset::Int=0, textfunc=nothing, fontargs=(;), kwargs...)
+  id = nodeid(G,findname)
+  ltext = G.names[id]
+  if textfunc !== nothing
+    ltext = textfunc(ltext)
+  end
   annotate!(G.xy[id,1],G.xy[id,2],
-    Plots.text(repeat(" ",offset)*G.names[id], args...; fontargs...); kwargs...)
+    Plots.text(repeat(" ",offset)*ltext, args...; fontargs...); kwargs...)
 end
 
 ##
@@ -482,7 +486,8 @@ function _rank_in_others(name,results,keyorder)
       return (key => findfirst(r.names[p] .== name))
     end, keyorder)
 end
-function _write_score_table(results, order_and_titles)
+function _write_score_table(results, order_and_titles;
+  nameformat=nothing, writescore::Bool=true)
   nresults = length(order_and_titles)
   for (key,title) in order_and_titles
     r = results[key]
@@ -507,7 +512,8 @@ function _write_score_table(results, order_and_titles)
         end
         print(" & ")
       end
-      println("$n, $(round(v,digits=6))", " \\\\")
+      println("$(nameformat === nothing ? n : nameformat(r, n))",
+        writescore ? ", $(round(v,digits=6))" : "", " \\\\")
     end
     println("\\bottomrule")
     println("\\end{tabular}")

@@ -122,6 +122,12 @@ git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.11.0"
 
+[[ColorVectorSpace]]
+deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "SpecialFunctions", "Statistics", "TensorCore"]
+git-tree-sha1 = "42a9b08d3f2f951c9b283ea427d96ed9f1f30343"
+uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
+version = "0.9.5"
+
 [[Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
 git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
@@ -983,6 +989,12 @@ version = "1.4.4"
 [[Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+
+[[TensorCore]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "1feb45f88d133a655e001435632f019a9a1bcdb6"
+uuid = "62fd8b95-f654-4bbd-a8a5-9c27f68ccd50"
+version = "0.1.1"
 
 [[TensorDecompositions]]
 deps = ["DistributedArrays", "Distributions", "LinearAlgebra", "ProgressMeter", "SparseArrays", "Statistics", "StatsBase", "TensorOperations"]
