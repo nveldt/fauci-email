@@ -10,6 +10,8 @@ A collection of over 3000 pages of emails sent by Anthony Fauci and his staff we
 
 This repository hosts an easy-to-use `json` digest of these emails appropriate for many future types of studies along with prepackaged datasets derived from this data (networks, graphs, hypergraphs, tensors) along with simple analysis scripts to demonstrate the findings in our arXiv paper.
 
+
+
 #### Citation
 
     @article{Benson-2021-fauci-emails,
@@ -26,6 +28,19 @@ This repository hosts an easy-to-use `json` digest of these emails appropriate f
       url = {https://s3.documentcloud.org/documents/20793561/leopold-nih-foia-anthony-fauci-emails.pdf},
     }
 
+Findings
+========
+
+Optimal modularity partitions
+-----------------------------
+We solve the NP-hard community detection problems using Gurobi's integer programming software. This results in the following partition of the network into communities (in a graph with Fauci removed, following structural hole theory). The heads of various federal agencies and task forces are present (Birx, Redfield, Farrar, Kadlac).
+
+![A network layout of the tofrom graph that shows 15 optimal modularity partitions of the nodes into 15 groups](figures/modularity-tofrom.jpg)
+
+Temporal evolution
+------------------
+
+[Following this link takes you to an animation of 100 days of emails to Fauci.](TODO)
 
 Datasets
 ========
