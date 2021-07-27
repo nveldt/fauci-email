@@ -138,3 +138,47 @@ function _write_json_graph_sequence(filename::String, G::NamedTuple)
   end
 end
 _write_json_graph_sequence("fauci-email-bydate-sequence-tofrom.json", T)
+
+## Construct a hypergraph and save it.
+include("methods_hypergraph.jl")
+kf = false
+ms = 100
+mindeg = 5
+parts=("sender","recipients")
+H = _build_email_hypergraph(data;hyperedgeparts=parts,maxset=ms, keepfauci=kf,mindegree = mindeg)
+
+##
+function _write_hyperedgedata(io, A::SparseMatrixCSC, nedges::Integer; last::Bool=false)
+  write(io, "\"hyperedgedata\": [", "\n")
+  # ugh, annoying to get this precise for JSON with the last comma missing...
+  edata = zip(findnz(A)...)
+  @assert(length(edata) == nedges)
+  for (ei,(i,j,w)) in enumerate(edata)
+    write(io, string(j-1), ", ", string(i-1), ei < nedges ? ",\n" : "\n")
+  end
+  write(io, last ? "]\n" : "],\n") # skip comma if last...
+end
+function _write_hypergraph_json(filename::String, G::NamedTuple)
+  nverts = size(G.H,2)
+  nedges = size(G.H,1)
+  nincidence = nnz(G.H)
+
+  labels = G.names
+  orgs = G.orgs
+  weights = G.weights
+  open(filename, "w") do f
+    write(f, "{\n")
+    write(f, "\"vertices\": ", string(nverts), ",\n")
+    write(f, "\"hyperedges\": ", string(nedges), ",\n")
+    write(f, "\"incidences\": ", string(nincidence), ",\n")
+    _write_hyperedgedata(f, copy(G.H'), nincidence)
+    @assert(length(weights) == nedges)
+    _write_list(f, "weights", weights)
+    @assert(length(labels) == nverts)
+    _write_list(f, "labels", labels; map=JSON.json)
+    @assert(length(orgs) == nverts)
+    _write_list(f, "orgs", orgs; last=true)
+    write(f, "}\n")
+  end
+end
+_write_hypergraph_json("fauci-email-hypergraph.json", H)
