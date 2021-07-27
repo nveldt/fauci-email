@@ -138,20 +138,3 @@ function _write_json_graph_sequence(filename::String, G::NamedTuple)
   end
 end
 _write_json_graph_sequence("fauci-email-bydate-sequence-tofrom.json", T)
-
-##
-## Write out the modularity layout for tofrom-cc
-G = _read_final("fauci-email-tofrom-cc-5.json") |>
-        G -> (G..., A = spones!(G.A - Diagonal(G.A))) |> # remove weights and diagonals
-        igraph_layout
-## Use Exact modularity and compute a group-based layout to make the analysis easier...
-c = exact_modularity(G.A)
-##
-writedlm("fauci-email-tofrom-cc-5-modularity-unweighted.clusters", c[1])
-##
-B = densify_graph_groups(G.A, c[1])
-##
-G = (G..., xy=igraph_layout(B, "fr"), groups=c[1])
-##
-using DelimitedFiles
-writedlm("fauci-email-tofrom-cc-5-modularity.xy", G.xy)
