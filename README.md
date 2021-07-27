@@ -1,7 +1,14 @@
 `fauci-email`: a `json` digest of Anthony Fauci's released emails
 ====================
 
-A collection of over 3000 pages of emails sent by Anthony Fauci and his staff were released in an effort to understand the United States government response to the COVID-19 pandemic. This repository hosts an easy-to-use `json` digest of these emails appropriate for many future types of studies along with prepackaged datasets derived from this data (networks, graphs, hypergraphs, tensors) along with simple analysis scripts to demonstrate the findings in our arXiv paper.
+A collection of over 3000 pages of emails sent by Anthony Fauci and his staff were released in an effort to understand the United States government response to the COVID-19 pandemic:
+
+> Anthony Fauci's Emails Reveal The Pressure That Fell On One Man   
+> Natalie Bettendorf and Jason Leopold    
+> BuzzFeed News, June 2, 2021   
+> https://www.buzzfeednews.com/article/nataliebettendorf/fauci-emails-covid-response
+
+This repository hosts an easy-to-use `json` digest of these emails appropriate for many future types of studies along with prepackaged datasets derived from this data (networks, graphs, hypergraphs, tensors) along with simple analysis scripts to demonstrate the findings in our arXiv paper.
 
 #### Citation
 
@@ -13,6 +20,8 @@ A collection of over 3000 pages of emails sent by Anthony Fauci and his staff we
     @misc{Leopold-2021-fauci-emails,
       title = {Anthony Fauci’s Emails Reveal The Pressure That Fell On One Man},
       author = {Natalie Bettendorf and Jason Leopold},
+      howpublished = {BuzzFeed News, \url{https://www.buzzfeednews.com/article/nataliebettendorf/fauci-emails-covid-response}},
+      month = {June},
       year = {2021},
       url = {https://s3.documentcloud.org/documents/20793561/leopold-nih-foia-anthony-fauci-emails.pdf},
     }
@@ -39,6 +48,8 @@ The raw JSON digest parsed from the PDF file. It's an array of email threads wit
                "subject": String, # the subject field
                "time": TIMESTRING, # the normalized time-string
              }
+
+    TIMESTRING <- String # An isoformat time from Python isoformat()
 
 e.g. in python3 this will output the sender and recipient lists for each email in each thread.
 
@@ -76,3 +87,50 @@ although our tools in `methods.jl` can produce additional variations.
 - `fauci-email-tofrom-cc-5.json`:  This is the same network above, but expanded to include the CC lists in the number of recipients. The same limit of 5 recipients applies.
 - `fauci-email-hypergraph-projection.json`:  This is a weighted network that is a network projection of the email hypergraph where each email indicates a hyperedge among the sender and recipients. We then form the clique projection of the hypergraph, where each hyperedge induces a fully connected set of edges among all participants. The weight on an edge in the network are the number of hyperedges that share that edge. The graph is naturally undirected. Because this omits CC lists from each hyperedge, the graph can easily be disconnected if an email arrived via a CC edge. To focus the data analysis, we remove any individual who has only a single edge in the graph (with any weight).
 - `fauci-email-hypergraph-projection-cc.json`: This version of the network adds CCed recipients to the hyperedge for each email.
+
+We designed these graphs to be easy to read in a variety of software. They can be read as JSON files, but are also simple enough to parse without any JSON libraries.
+
+    {
+      "vertices": <number of vertices>,
+      "edges": <number of edges>,
+      "edgedata": [
+        <src1>, <dst1>, <weight1>,
+        <src2>, <dst2>, <weight2>,
+        ...
+        <src_number_of_edges>, <dst_number_of_edges>, <weight_number_of_edges>
+      ],
+      "labels": [
+        <list of labels, one per vertex>
+      ],
+      "orgs": [
+        <list of organizations, one per vertex>
+      ]
+    }
+
+ For instance, to use them with the [SNAP package](https://snap.stanford.edu/) a few shell commands suffice
+
+    $ tail -n +5 fauci-email-tofrom-5.json | sed -n '/],/q;p' | sed 's/,//g' | cut -f1,2 -d" " | less
+
+Or to read them without any JSON package in python3
+
+    with open("fauci-email-repliedto.json", "r") as f:
+      f.readline() # read the first '{'
+      nverts = int(f.readline().split(':')[1].split(',')[0])
+      nedges = int(f.readline().split(':')[1].split(',')[0])
+      f.readline() # read "edgedata"
+      src, dst, weights = [],[],[]
+      for _ in range(nedges):
+        einfo = f.readline().split(",")
+        src.append(int(einfo[0]))
+        dst.append(int(einfo[1]))
+        weights.append(int(einfo[2]))
+      f.readline() # read end array
+      f.readline() # read label array start
+      labels = []
+      for _ in range(nverts):
+        labels.append(f.readline().strip().strip(",").strip('"'))
+      f.readline() # read label array end
+      f.readline() # read org array start
+      orgs = []
+      for _ in range(nverts):
+        orgs.append(int(f.readline().strip().strip(",")))
