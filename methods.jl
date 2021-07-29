@@ -564,7 +564,7 @@ end
 function _read_final_sequence(fn::AbstractString)
   gdata = JSON.parsefile(fn)
   n = gdata["vertices"]
-  As = _edgedata_to_sparse.(gdata["sequence"], n)
+  As = _edgedata_to_sparse.(gdata["sequencedata"], n)
   # find all instances of edgedata and convert to adjaency matrices...
   return (T=As, dates=Date.(gdata["dates"]), names=string.(gdata["labels"]), orgs=Int.(gdata["orgs"]))
 end
