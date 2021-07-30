@@ -66,8 +66,11 @@ for i=dp[1:14]
 end
 _darker(x::RGB, f::Real) = RGB(f*x.r, f*x.g, f*x.b)
 # show other labels
+println()
 for n in ["awwad", "abutaleb", "beigel", "cabezas", "niaid news"]
   nid = nodeid(G, n)
+  bcrank = findfirst(dp .== nid)
+  println("$(G.names[nid]), bcrank=$(bcrank), $(dp[bcrank] == nid)")
   showlabel!(G,n ,7, :center,
     _darker(theme_palette(:default)[G.groups[nid]], 0.5),
     textfunc=_short_name)

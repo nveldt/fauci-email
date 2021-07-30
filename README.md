@@ -40,7 +40,7 @@ We solve the NP-hard community detection problems using Gurobi's integer program
 Temporal evolution
 ------------------
 
-[Following this link takes you to an animation of 100 days of emails to Fauci.](TODO)
+[Following this link takes you to an animation of 100 days of emails to Fauci.](figures/anim-mod.mp4)
 
 Datasets
 ========

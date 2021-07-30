@@ -53,7 +53,31 @@ using HyperModularity
 M, slices = expand_to_slicetime_matrix(T2)
 @time cc = HyperModularity.LambdaLouvain(M, zeros(size(M,1)), 0.0)[:,end]
 ## Assemble the data into a little heatmap...
-# only show the nodes that are in more than one group
+C = zeros(Float64,maximum(slices[1]), length(slices))
+for (i,slice) in enumerate(slices)
+  C[:,i] = cc[slice]
+end
+
+# make a list of emails by time.
+E=zeros(Int, size(C)...)
+for i=1:size(C,1)
+  E[i,:] .= map(A->sum(findnz(max.(A,A'))[1].==i), T2.T)
+end
+E = sparse(E)
+# find the first appearance for each node and filter by NaN before/after (1 week) that
+for i=1:size(C,1)
+  firsttime = findfirst(map(A->sum(findnz(max.(A,A'))[1].==i) > 0, T2.T))
+  lasttime = findlast(map(A->sum(findnz(max.(A,A'))[1].==i) > 0, T2.T))
+  C[i,1:firsttime-1] .= NaN
+  C[i,lasttime + 7:end] .= NaN
+end
+ngroups = length.(unique.(eachrow(C)))
+# permute by last slice
+#p= sortperm(C[:,end])
+#p = findall(ngroups .> 1)
+p = sortperm(collect(zip(ngroups, C[:,end])))
+
+##
 #=
 pyplot()
 using Measures

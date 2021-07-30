@@ -72,6 +72,7 @@ function unroll_weighted_hypergraph(H::NamedTuple)
   # in the original hypergraph.
   # Seems silly, but need this to run certain hypergraph PageRank
   # algorithms...
+  n = size(H.H,2)
   Elist = incidence2elist(H.H)
   E2 = Vector{Vector{Int64}}()
   for e = 1:length(Elist)
@@ -84,7 +85,7 @@ function unroll_weighted_hypergraph(H::NamedTuple)
   return H2
 end
 
-function project_hypergraph(H::NamedTuple)
+function project_hypergraph(H::NamedTuple; distribute_hyperedge::Bool=false )
   # Clique expansion
   n = length(H.names)
   I = Vector{Int64}()
@@ -95,11 +96,16 @@ function project_hypergraph(H::NamedTuple)
     if maximum(edge) > n
       @show edge
     end
+    clique_edge_scale = 1/binomial(length(edge),2)
     for i = 1:length(edge)
       for j = i+1:length(edge)
         push!(I,edge[i])
         push!(J,edge[j])
-        push!(V,H.weights[e])
+        if distribute_hyperedge
+          push!(V,H.weights[e]*clique_edge_scale)
+        else
+          push!(V,H.weights[e])
+        end
       end
     end
   end

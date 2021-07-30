@@ -1,12 +1,10 @@
-include("methods_hypergraph.jl")
-include("methods.jl")
+##
+include("../methods.jl")
+include("../methods_hypergraph.jl")
 
-## Construct a hypergraph
-kf = false
-ms = 100
-mindeg = 5
-parts=("sender","recipients")
-H = _build_email_hypergraph(data;hyperedgeparts=parts,maxset=ms, keepfauci=kf,mindegree = mindeg)
+H = _read_final_hypergraph("fauci-email-hypergraph.json")
+##
+
 s = nodeid(H,"collins");
 t = nodeid(H,"conrad");
 order = vec(sum(H.H,dims = 2))
@@ -48,18 +46,22 @@ changed_labels = H.names[Changed]
 changed_labels = Vector{String}()
 
 for k in Changed
-    push!(changed_labels,H.names[k]*" $(H.orgs[k])")
+    push!(changed_labels,split(H.names[k], ", ")[1])
 end
 
 xs = Deltas
 stepx = 5
 stepy = 1
-ms = 6
-
-s1 = 700
-s2 = 700
-spy(P,legend=:false,seriescolor=:greens,markersize=ms, size = (s1,s2),
-xlabel=x_label, title = "s = Collins, t = Conrad",
-xtickfont=font(10), ytickfont=font(8), guidefont=font(12),titlefont=font(10),
+ms = 4
+s2 = 525
+s1 = 400
+spy(P,legend=:false,seriescolor=:reds,markersize=ms, size = (s2,s2),
+markerstrokecolor=:white,
+#bottom_margin=-20mm,
+marker=:square,
+xlabel=x_label, #title = "s = Collins, t = Conrad",
+xtickfont=font(10), ytickfont=font(7), guidefont=font(12),titlefont=font(10),
 xticks = (1:stepx:length(xs), xs[1:stepx:length(xs)]),ymirror=true,
 yticks = (1:stepy:length(Changed), changed_labels[1:stepy:length(Changed)]))
+##
+savefig("figures/hypergraph-delta.pdf")

@@ -100,7 +100,7 @@ function _write_graph_data_table_markdown(G, gname)
     string(Int(w.mediandegree)),
     string(round(w.lam2,digits=4)),
     ""],
-    " & ")
+    " | ")
   println(str)
 end
 graphs = ["fauci-email-repliedto.json" => "\\texttt{repliedto-nofauci}",
