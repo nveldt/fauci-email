@@ -132,7 +132,9 @@ end
 events=[Date("2020-02-26") => "Vice Pres",
         Date("2020-02-28") => "First death",
         Date("2020-03-13") => "Emergency",
-        Date("2020-03-06") => "Funding"]
+        Date("2020-03-06") => "Funding",
+        Date("2020-04-13") => "CBC Test.",
+        ]
 for (ed,name) in events
   annotate!(findfirst(T2.dates .== ed),
            length(T2.names)+1,
@@ -284,3 +286,22 @@ end
 #gif(anim, "figures/anim-mod.gif", fps=60)
 ##
 mp4(anim, "figures/anim-mod.mp4"; fps=60)
+
+
+## Try and figure out the cluster around April 20 with
+# Stover, Routh, Billet, Folkers
+# It's around April 20 with Stover as a key member.
+ids = map(x->findfirst(startswith.(data["names"],x)),["stover","routh","billet","folkers"])
+##
+startdate=Date("2020-04-19")
+enddate=Date("2020-04-24")
+dt = DateFormat("yyyy-mm-ddTHH:MM:SS")
+for thread in data["emails"]
+  for email in thread
+    people = [email["sender"]; email["recipients"]; email["cc"]].+1 # off by one
+    if startdate <= DateTime(email["time"][1:19],dt) <= enddate &&
+       ids[1] in people
+      print_email(email, data["names"])
+    end
+  end
+end
