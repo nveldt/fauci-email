@@ -1,6 +1,8 @@
 include("../methods.jl")
 include("../include/exact_conductance_jump.jl")
 include("../include/Optimal_LambdaCC.jl")
+##
+using Measures
 ## Get graph
 #G = _read_final("fauci-email-tofrom-cc-5.json") |>
         #G -> (G..., A = spones!(G.A - Diagonal(G.A))) |> # remove weights and diagonals
@@ -45,17 +47,19 @@ drawset!(G, ncut_S,
 showlabel!(G, "conrad", 7, :left; fontargs=(;rotation=-15), offset=2)
 showlabel!(G, "colucci", 7, :left; fontargs=(;rotation=-15), offset=2)
 showlabel!(G, "collins", 7, :left; fontargs=(;rotation=-15), offset=2)
-plot!(legend=:outside, legendfontsize=9, margin=-20mm)
+plot!(legend=:bottomleft, legendfontsize=9, margin=-20mm)
 ##
 savefig("figures/cond-vs-ncut.pdf")
 ##
 stcut_S = stcut(G, "collins", "conrad")
-drawgraph(G, pointcolor=:none, label="", size=(350,350))
-drawset!(G, stcut_S, label="Collins-Conrad cut", marker=:star,
-  markersize=4, color=3, markerstrokecolor=3)
-showlabel!(G, "conrad", 7, :left, rotation=15)
-showlabel!(G, "collins", 7, :left, rotation=15)
-plot!(legend=:bottomleft, legendfontsize=9)
+drawgraph(G, pointcolor=:none, label="", size=(350,350), linecolor=:black)
+
+drawset!(G, stcut_S,
+  marker=:square,
+  markersize=2, color=4, markerstrokecolor=:black,  markerstrokewidth=0.5, label="Collins-Conrad cut")
+  showlabel!(G, "conrad", 7, :left; fontargs=(;rotation=-15), offset=2)
+  showlabel!(G, "collins", 7, :left; fontargs=(;rotation=-15), offset=2)
+plot!(legend=:bottomleft, legendfontsize=9, margin=-20mm)
 ##
 savefig("figures/cond-vs-ncut-stcut.pdf")
 ##
@@ -71,12 +75,19 @@ spec_S_ncut = spec_S_data.sweepcut_profile.p[argmin(sweepcut_ncuts):end]
 ##
 
 ##
-drawgraph(G, pointcolor=:none, label="", size=(350,350))
-drawset!(G, spec_S, label="Spectral Clustering", marker=:star,
-  markersize=4, color=3, markerstrokecolor=3)
-showlabel!(G, "conrad", 7, :left, rotation=15)
-showlabel!(G, "collins", 7, :left, rotation=15)
-plot!(legend=:bottomleft, legendfontsize=9)
+stcut_S = stcut(G, "collins", "conrad")
+drawgraph(G, pointcolor=:none, label="", size=(350,350), linecolor=:black)
+
+drawset!(G, spec_S,
+  marker=:square,
+  markersize=2, color=4, markerstrokecolor=:black,  markerstrokewidth=0.5,
+    label="Spectral Clustering")
+  showlabel!(G, "conrad", 7, :left; fontargs=(;rotation=-15), offset=2)
+  showlabel!(G, "collins", 7, :left; fontargs=(;rotation=-15), offset=2)
+plot!(legend=:bottomleft, legendfontsize=9, margin=-20mm)
+
+
+
 ##
 savefig("figures/cond-vs-ncut-spectral.pdf")
 ##

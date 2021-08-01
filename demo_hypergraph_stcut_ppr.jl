@@ -41,7 +41,7 @@ drawset!(G, JustGraph,markersize = 5, color =:red, label = "just-graph")
 drawset!(G,[s],markersize = 10)
 drawset!(G,[t],markersize = 10)
 
-savefig("bothstcut_mindeg$(mindeg)_maxset$(ms)_fauci_$(kf).pdf")
+#savefig("bothstcut_mindeg$(mindeg)_maxset$(ms)_fauci_$(kf).pdf")
 
 
 ## What are these nodes where sets differ?
@@ -76,7 +76,7 @@ x_lh ,r,iter = LH.lh_diffusion(GG,seedset,gamma,kappa,rho,L,max_iters=10000)
 ## QDSFM PPR
 Ht = sparse(H2')
 beta = 0.05
-x_qd = QDSFMPageRank.qdsfmpr_ppr_euler(Ht, S, beta, 5000, 0.01)
+x_qd = QDSFMPageRank.qdsfmpr_ppr_euler(Ht, seedset, beta, 5000, 0.01)
 
 ## Rankings
 p = sortperm(x,rev = true)

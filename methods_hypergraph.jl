@@ -31,11 +31,11 @@ function _build_email_hypergraph(data;
   n = length(names)
   m = length(hyperedges)
   H, HypEdges, weights = convert_to_weighted(hyperedges,ones(m),n)
-  
+
   m,n = size(H)
   println("Raw data has ")
   println("  $n nodes and $m hyperedges")
-  
+
   # filter out low degree nodes
   d = vec(sum(H;dims=1))
   d = hypergraph_sum_degree(H,weights)
@@ -62,7 +62,7 @@ function _build_email_hypergraph(data;
   Hfinal = H2[ccfilt_edges,ccfilt_nodes]
   weights_final = weights2[ccfilt_edges]
   edgelist = incidence2elist(Hfinal)
-  
+
   return (H=Hfinal, elist=edgelist, orgs = orgs_final,names = names_final,weights=weights_final)
 end
 
@@ -72,6 +72,7 @@ function unroll_weighted_hypergraph(H::NamedTuple)
   # in the original hypergraph.
   # Seems silly, but need this to run certain hypergraph PageRank
   # algorithms...
+  n = size(H.H,2)
   Elist = incidence2elist(H.H)
   E2 = Vector{Vector{Int64}}()
   for e = 1:length(Elist)
@@ -84,7 +85,7 @@ function unroll_weighted_hypergraph(H::NamedTuple)
   return H2
 end
 
-function project_hypergraph(H::NamedTuple)
+function project_hypergraph(H::NamedTuple; distribute_hyperedge::Bool=false )
   # Clique expansion
   n = length(H.names)
   I = Vector{Int64}()
@@ -93,13 +94,18 @@ function project_hypergraph(H::NamedTuple)
   for e = 1:length(H.elist)
     edge = H.elist[e]
     if maximum(edge) > n
-      @show edge 
+      @show edge
     end
+    clique_edge_scale = 1/binomial(length(edge),2)
     for i = 1:length(edge)
       for j = i+1:length(edge)
         push!(I,edge[i])
         push!(J,edge[j])
-        push!(V,H.weights[e])
+        if distribute_hyperedge
+          push!(V,H.weights[e]*clique_edge_scale)
+        else
+          push!(V,H.weights[e])
+        end
       end
     end
   end
@@ -118,7 +124,7 @@ function convert_to_weighted(hyperedges,weights,n)
       HypDict[e] = weights[eid]
     end
   end
-  
+
   HypEdges = Vector{Vector{Int64}}()
   new_weights = Float64[]
   for edge in keys(HypDict)
@@ -199,7 +205,7 @@ end
         elseif nv == 2
             i = edge[1]; j = edge[2]
             #A[i,j] += 1; A[j,i] += 1
-            
+
             push!(U,i); push!(V,j); push!(vals,wts)
             push!(U,j); push!(V,i); push!(vals,wts)
         elseif nv == 3
@@ -230,4 +236,21 @@ end
     # @show maximum(U), maximum(V), length(U), length(V), N, ap
     A = sparse(U,V,vals,N,N)
     return A
+end
+
+
+##
+function _read_final_hypergraph(fn::AbstractString)
+  hdata = JSON.parsefile(fn)
+  n = hdata["vertices"]
+  m = hdata["hyperedges"]
+  nmaps = hdata["incidences"]
+  X = reshape(Int.(hdata["hyperedgedata"]), 2, nmaps)
+  H = sparse(Int.(X[1,:]).+1, Int.(X[2,:]).+1, 1.0, m, n)
+  weights = Float64.(hdata["weights"])
+  return (H=H,
+    elist=incidence2elist(H),
+    orgs=Int.(hdata["orgs"]),
+    names=string.(hdata["labels"]),
+    weights=weights,)
 end

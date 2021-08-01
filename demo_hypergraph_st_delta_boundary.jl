@@ -5,6 +5,7 @@ include("methods.jl")
 kf = false
 ms = 100
 mindeg = 5
+parts=("sender","recipients")
 H = _build_email_hypergraph(data;hyperedgeparts=parts,maxset=ms, keepfauci=kf,mindegree = mindeg)
 s = nodeid(H,"collins");
 t = nodeid(H,"conrad");
@@ -62,4 +63,3 @@ xlabel=x_label, title = "s = Collins, t = Conrad",
 xtickfont=font(10), ytickfont=font(8), guidefont=font(12),titlefont=font(10),
 xticks = (1:stepx:length(xs), xs[1:stepx:length(xs)]),ymirror=true,
 yticks = (1:stepy:length(Changed), changed_labels[1:stepy:length(Changed)]))
-

@@ -180,3 +180,47 @@ function build_temporal_graphs(data;
     keepcc, keepfauci, emailweight, keepempty, keepduplicates,
     duplicates=tdata.duplicates)
 end
+
+##
+# The matrices involved were all small (77 nodes) and we
+# computed this by direct inversion of the matrix -- this
+# is in violation the pedagogical dogma of numerical
+# linear algebra classes and would have failed the final author in Gene Golub's numerical analysis class.
+function temporal_communicability(T::NamedTuple, a::Float64)
+  Q = prod(map(A->inv(Matrix(I-a*A)), T.T))
+  broadcast = vec(sum(Q,dims=2))
+  recv = vec(sum(Q,dims=1))
+  return (Q, broadcast, receive=recv, names=T.names)
+end
+
+##
+function expand_to_slicetime_matrix(T::NamedTuple;
+  gamma::Float64=1.0,omega::Float64=0.5)
+  if eltype(T.T) <: Pair
+    dates, mats = first.(T.T), last.(T.T)
+  else
+    mats, dates = T.T, T.dates
+  end
+  nT = length(dates)
+  N = size(mats[1],1)
+  @assert(all(N .== size.(mats,1)))
+  B = spzeros(nT*N, nT*N) # we are gonna be really naughty with sparse construction
+  # TODO, make this much better
+  twomu = 0
+  slices = UnitRange{Int}[]
+  for t=1:nT
+    mat = mats[t]
+    mat = max.(mat,mat') # make it symmetric...
+    k = vec(sum(mat;dims=1)); # column sums...
+    twom = sum(k)
+    twomu += twom
+    slice = (1:N) .+ (t-1)*N
+    push!(slices,slice)
+    B[slice,slice] = mat-gamma*k*k'/twom
+  end
+  twomu = twomu+2*omega*N*(nT-1)
+  B = B + omega*spdiagm(nT*N, nT*N, -N => ones(N*(nT-1)), N=>ones(N*(nT-1)))
+  return B, slices
+end
+
+##
