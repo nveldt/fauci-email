@@ -52,6 +52,10 @@ drawgraph(TG2; markersize=15,alpha=0.5,
 using HyperModularity
 M, slices = expand_to_slicetime_matrix(T2)
 @time cc = HyperModularity.LambdaLouvain(M, zeros(size(M,1)), 0.0)[:,end]
+## Save the temporal modularity output
+open("final/temporal-modularity-clusters.json","w") do f
+    JSON.print(f, ["clusters"=>cc, "slices"=>slices, "names"=>T2.names,"dates"=>T2.dates])
+end
 ## Assemble the data into a little heatmap...
 C = zeros(Float64,maximum(slices[1]), length(slices))
 for (i,slice) in enumerate(slices)
