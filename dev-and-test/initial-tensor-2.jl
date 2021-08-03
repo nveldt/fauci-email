@@ -1,7 +1,7 @@
 include("../methods.jl")
-data2 = JSON.parsefile("fauci-email-graph-2.json")
+data = JSON.parsefile("fauci-email-graph.json")
 ##
-tensor1 = JSON.parsefile("fauci-email-tensor-1.json")
+tensor1 = JSON.parsefile("fauci-email-tensor-words.json")
 R1 = temporal_reachability(data;expandstrongcomponents=false)
 R = min.(R1.R,R1.R')
 C1 = sort(simple_clique_heuristic(R))
