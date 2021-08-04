@@ -16,7 +16,13 @@ This repository hosts an easy-to-use `json` digest of these emails appropriate f
 
     @article{Benson-2021-fauci-emails,
       author = {Austin Benson and Nate Veldt and David F. Gleich},
-      ...
+      title = {fauci-email: a json digest of Anthony Fauci's released emails},
+      url = {http://arxiv.org/abs/2108.01239},
+      journal = {arXiv},
+      year = {2021},
+      pages = {2108.01239},
+      volume = {cs.SI},
+      note = {Code and data available from \url{https://github.com/nveldt/fauci-email}}
     }
 
     @misc{Leopold-2021-fauci-emails,
