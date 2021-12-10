@@ -1,0 +1,95 @@
+From: radin, gary
+To: fauci, anthony
+CC: 
+Date: 2020-04-23T08:31:00
+Subject: Another Possible Tool in The Fight Against SARS-CoV-2?
+Body: 
+ 
+Dr. Fauci---Forgive the crude and unsolicited manner in which I am attempting to reach out to
+you but I don't reall y KNOW any other way!
+I am not a medical doctor nor am I a principle investigator. I am just a Cytologist employed in
+the Anatomic Pathology department at LA County-USC Medical Center here in Southern
+California.
+But I have been read ing a lot- -- and in my own exploration I have come across several articles
+which suggest the possibility of using a class of agents called
+SPHINGOSINE-1-PHOSPHATERECEPTOR            AGONISTSin combination with antivirals like
+oseltamivir (or perhaps Remdesivir?) to treat both the viral pathogen responsibl e for the
+current pandemic as well as the runaway immune response of the host leading to the oft fatal
+cytokine storms.
+Apparently these compounds have been approved for flare-ups of multiple sclerosis, and have
+even been tried on Alzheimer's patients. The commonly known drug is FINGOLIMOD. But these
+papers that I have cited for you below seem to indicate that structural analogs of this
+compound could be important in damping down the dysregulated pro -inflammatory cascades
+which seem to be leading to DIC, alveolar exudates and diffuse alveolar damage, capillary leak
+syndrome and ultimately the multiple organ failure that is killing an unacceptably high number
+of people.
+The fly in the ointment Dr. Fauci here is that these 5-1-PR agonists have only been
+demonstrated to be effective in non-human primates and other mammals. And much of these
+studies on these compounds has been done not on coronaviruses but on influenza viruses .
+So it would be a gamble. But is that not how we have learned much about human health and
+disease is by the gracious sacrifice of our anim al cousins? And might it not be a general effect
+that these sphingosine derivat ives have on viral sepsis so that maybe what works for influenza
+might work for the coronavirus?
+In the dire situation that many of the most critically ill COVID 19 patien ts find themselves, it
+seems they are on the pr ecipice of a rapid demise once they begin to show certain key
+laboratory resu lts---(sp ikes in 0-DIMER, C-Reactive Protein, Serum Ferritin, prolongation of
+prothrombin and APTT, increased card iac troponin 1, surges in IL-6, IL-7, monocytic and
+macrophage chemo-attractant cytokines etc) .
+W ith pat ients isolated by these aberrant lab values, the window may be narrow but it may be a
+time where application of antiviral compounds in combination with t hese inflamma t ory
+mod ulat ors could have a striking impact on mor t ality? Indeed maybe even TWO different
+antivirals with diff ering mechan isms of action in combination with these S1-PRAgonists would
+even be better. And the possibilit ies of other combinat ions of course would be there for
+further exploration .
+Fully cognizant of the Hippocratic Oath to 'first do no harm' I still believe that at least the
+medical rationale is sound for the inclusio n of these agents int o the possible arsena l of
+therapeutics for the more severe COVID 19 patients.
+Please refe r below to t he st udies I found particularly helpful or promis i ng. Perhaps yo u can put
+together some 'teams ' to further explore investigate these opt ions??
+We all appreciate everyt hi ng you have done, and continue to do !
+Gary Radin
+https://www .sciencedirect.com/science/article/pii/S0140673620303056
+https ://www.pnas.org/ conte nt/108/29 /12 018
+https://www .clinical key .com/# !/con tent/p layContent/1-s2. 0-
+S0042682214000063 ?return ur l=http s:%2F%2Flinkinghu b.elsevier .com%2 Fretrieve%2Fpii%2FS0
+042682214000063%3Fshowall%3Dtrue&referrer=
+Suppression of cytok ine storm with a
+sphingosine analog prov ides protection
+against pathogenic influen za virus                  I
+PNAS
+Human pandemic H1N1 2009 influenza virus rapidly
+infected millions worldwide and was associated with
+significant mortality. Antiviral drugs that inhibit influenza
+virus replication are the primary therapy used to diminish
+disease; however, there are two significant limitations to
+their effective use: ( i) antiviral drugs exert selective
+pressure on the virus, resulting in the generation of ...
+www.pnas.org
+https://www.thelancet.com / journals/lancet/article/PIISOl 40-6736(20)30566-3 /fu lltext
+Clinical course and risk factors for mortality of adult inpatients
+with COVID-19 in Wuhan, China: a retrospective cohort study
+1   - The Lancet
+The potential riskfactorsof older age, high SOFAscore,and d-dimer greater than 1
+µg/ml could help cliniciansto identify patientswith poor prognosisat an early stage.
+Prolongedviral shedding providesthe rationalefor a strategy of isolationof infected
+patients and optimal antiviral interventionsin the future.
+www.thelancet.com
+https://www.ncbi.nlm.nih.gov /pmc/articles/PMC317 6439 /
+Endothelial cells are central
+orchestrators of cytokine
+amplification during
+influenza virus infection -
+PubMed Central (PMC)
+Cytokine storm during viral infection is
+a prospectivepredictor of morbidity
+and mortality,yet the cellularsources
+remain undefined. Here, using genetic
+and chemicaltools to probe functions
+of the S1P 1 receptor,we elucidate
+cellularand signaling mechanisms
+important in initiating cytokine storm.
+While S1P 1 receptor is expressedon
+endothelial cells and lymphocytes
+within lung tissue ...
+www.ncbi.nlm.nih.gov
+

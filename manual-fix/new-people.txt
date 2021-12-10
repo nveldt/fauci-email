@@ -1,0 +1,7 @@
+Entry in dataset; name; cluster (cluster ID)
+1304; hicks, lauri; CDC (3)
+1305; roohi, shahrokh; CDC (3)
+1306; thompson, robert; other (7)
+1307; poznasky, mark; other (7)
+1308; richardson, juliana; HHS (2)
+1309; goldstein, sandra; other (7)
