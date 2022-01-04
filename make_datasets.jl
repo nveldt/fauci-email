@@ -89,7 +89,7 @@ function _write_simple_json(filename::String, G::NamedTuple)
 end
 ##
 G = _build_email_tofrom_graph(data; maxset=5, keepfauci=false)
-_write_simple_json("fauci-email-tofrom-5.json", G)
+_write_simple_json("fauci-email-graph-tofrom-nofauci-nocc-5.json", G)
 
 ##
 G = _build_email_tofrom_graph(data; maxset=5, keepfauci=false, keepcc=true)
