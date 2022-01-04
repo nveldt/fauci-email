@@ -103,11 +103,11 @@ function _write_graph_data_table_markdown(G, gname)
     " | ")
   println(str)
 end
-graphs = ["fauci-email-repliedto.json" => "\\texttt{repliedto-nofauci}",
-  "fauci-email-hypergraph-projection.json" => "\\texttt{hypergraph-proj} w/o CC",
-  "fauci-email-hypergraph-projection-cc.json" => "\\texttt{hypergraph-proj} with CC",
-  "fauci-email-tofrom-5.json"  => "\\texttt{tofrom-nofauci} w/o CC",
-  "fauci-email-tofrom-cc-5.json"  => "\\texttt{tofrom-nofauci} with CC",]
+graphs = ["fauci-email-graph-repliedto-nofauci.json" => "\\texttt{repliedto-nofauci}",
+  "fauci-email-graph-hypergraph-projection-nocc.json" => "\\texttt{hypergraph-proj} w/o CC",
+  "fauci-email-graph-hypergraph-projection-cc.json" => "\\texttt{hypergraph-proj} with CC",
+  "fauci-email-graph-tofrom-nofauci-nocc-5.json"  => "\\texttt{tofrom-nofauci} w/o CC",
+  "fauci-email-graph-tofrom-nofauci-cc-5.json"  => "\\texttt{tofrom-nofauci} with CC",]
 println()
 map(x -> begin
   G = _read_final(x[1])
