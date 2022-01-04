@@ -1,11 +1,12 @@
 ## Here we will load in the manual fixes for the no-subject emails with errors
 
 using JSON
-data = JSON.parsefile("../fauci-email-graph.json")
+data = JSON.parsefile("fauci-email-initial.json")
 
 emails = data["emails"]
 names = data["names"]
 clusters = data["clusters"]
+
 
 ## First of all, there were a few new names we had to add for the no-subject errors
 push!(names, "hicks, lauri")
@@ -71,6 +72,6 @@ data["names"] = names
 stringdata = JSON.json(data)
 
 # write the file with the stringdata variable information
-open("fauci-email-data-fixed-again.json", "w") do f
+open("../fauci-email-data.json", "w") do f
         write(f, stringdata)
 end

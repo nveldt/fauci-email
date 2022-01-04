@@ -44,7 +44,7 @@ We loaded in the original JSON file, and added 6 new entries to the "names" vect
 
 In this script, we loaded in information from the "fixed-body.txt" and "fixed-short.txt" files for each manually corrected file. This was saved into the final cleaned dataset:
 
-Fauci-email-data.json
+fauci-email-data.json
 
 5. Checking
 
