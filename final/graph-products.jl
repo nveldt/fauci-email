@@ -39,11 +39,9 @@ function _compute_and_write_products(A, fn)
     JSON.print(io, p, 1)
   end
 end
-graphs = ["fauci-email-repliedto.json",
-  "fauci-email-tofrom-5.json",
-  "fauci-email-tofrom-cc-5.json",
-  "fauci-email-hypergraph-projection.json",
-  "fauci-email-hypergraph-projection-cc.json",]
+graphs = ["fauci-email-graph-repliedto-nofauci.json",
+  "fauci-email-graph-tofrom-nofauci-nocc-5.json",
+  "fauci-email-graph-tofrom-nofauci-cc-5.json"]
 for g in graphs
   G = _read_final(g)
   S = _simple_graph(G)

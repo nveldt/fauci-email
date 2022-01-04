@@ -41,8 +41,8 @@ function _compute_and_write_products(A, fn)
   end
 end
 graphs = [
-  "fauci-email-hypergraph-projection.json",
-  "fauci-email-hypergraph-projection-cc.json",]
+  "fauci-email-graph-hypergraph-projection-nocc.json",
+  "fauci-email-graph-hypergraph-projection-cc.json"]
 for g in graphs
   G = _read_final(g)
   S = _simple_graph(G)
