@@ -3,13 +3,12 @@ using MatrixNetworks
 using JSON
 using DelimitedFiles
 using Printf
-include("methods.jl")
-data = JSON.parsefile("fauci-email-graph.json")
+data = JSON.parsefile("fauci-email-data.json")
 
 ## First email for display in figure
 email1 = data["emails"][1][1]
 
-# Histogram of how many emails each person sends, receives, and is CC'ed on.
+# Save how many emails each person sends, receives, and is CC'ed on.
 Names = data["names"]
 n = length(Names)
 
@@ -32,15 +31,9 @@ for thread in emails
     end
 end
 
-## Histogram Plots
-
-using Plots 
-ind = 3
-keep = findall(x->x<10,T[:,ind])
-histogram(T[keep,ind])
 
 
-## Just show tables
+## Tables
 
 p1 = sortperm(T[:,1],rev = true)
 p2 = sortperm(T[:,2],rev = true)
@@ -93,9 +86,5 @@ for i = 1:3
     end
     println("\\bottomrule")
     println("\\end{tabular}")
-  end
 end
-
-
-## Let's see if we can find a parse error
 

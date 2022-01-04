@@ -5,7 +5,7 @@ using JSON
 using DelimitedFiles
 using Printf
 
-data = JSON.parsefile("fauci-email-graph.json")
+data = JSON.parsefile("fauci-email-data.json")
 include("include/FlowSeed.jl")
 include("include/PushRelabelMaxFlow.jl")
 
