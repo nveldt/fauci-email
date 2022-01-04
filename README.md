@@ -95,9 +95,9 @@ although our tools in `methods.jl` can produce additional variations.
 
 | Graph file | nodes | simple graph<br> edges | simple<br> max degree | simple<br> mean degree | simple<br> median degree | simple<br> lambda2 || weighted graph<br> loops | weighted <br> volume | max weighted<br> degree | mean weighted<br> degree | median weighted<br> degree | weighted<br> lambda2 |
 | ---------- | --- | --- |  --- | --- | --- | --- | ---| --- | --- |  --- | --- | --- | --- |
-| `fauci-email-graph-repliedto-nofauci.json` | 46 | 58 | 18 | 2.5 | 1 | 0.0167 |  | 2 | 435 | 7 | 91 | 9.5 | 3 | 0.0082 | 
-| `fauci-email-graph-hypergraph-projection-nocc.json` | 372 | 2589 | 267 | 13.9 | 6 | 0.0536 |  | 0 | 13120 | 0 | 1998 | 35.3 | 11 | 0.0346 | 
-| `fauci-email-graph-hypergraph-projection-cc.json`| 891 | 7250 | 697 | 16.3 | 7 | 0.0084 |  | 0 | 76910 | 0 | 4524 | 86.3 | 11 | 0.005 | 
+| `fauci-email-graph-repliedto-nofauci` | 46 | 58 | 18 | 2.5 | 1 | 0.0167 |  | 2 | 435 | 7 | 91 | 9.5 | 3 | 0.0082 | 
+| `fauci-email-graph-hypergraph-projection-nocc` | 372 | 2589 | 267 | 13.9 | 6 | 0.0536 |  | 0 | 13120 | 0 | 1998 | 35.3 | 11 | 0.0346 | 
+| `fauci-email-graph-hypergraph-projection-cc`| 891 | 7250 | 697 | 16.3 | 7 | 0.0084 |  | 0 | 76910 | 0 | 4524 | 86.3 | 11 | 0.005 | 
 | `fauci-email-graph-tofrom-nofauci-nocc-5`| 233 | 325 | 44 | 2.8 | 1 | 0.0331 |  | 2 | 1168 | 2 | 102 | 5.0 | 2 | 0.0309 | 
 | `fauci-email-graph-tofrom-nofauci-cc-5` | 386 | 585 | 97 | 3.0 | 2 | 0.0438 |  | 9 | 2173 | 15 | 247 | 5.6 | 2 | 0.0316 | 
 
