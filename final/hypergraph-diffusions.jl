@@ -5,7 +5,7 @@ include("../methods_hypergraph.jl")
 H = _read_final_hypergraph("fauci-email-hypergraph.json")
 
 ##
-A = project_hypergraph(H2)
+A = project_hypergraph(H)
 xy = igraph_layout(A; random=false)
 # fill!(A.nzval, 1) # if you wish to make unweighted
 G = (A = A, names = H.names, xy = xy,orgs = H.orgs)

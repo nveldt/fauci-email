@@ -1,7 +1,7 @@
 ##
 include("../methods.jl")
 include("../methods_hypergraph.jl")
-
+using Measures
 H = _read_final_hypergraph("fauci-email-hypergraph.json")
 ## Project and layout the big hypergraph
 xyG = igraph_layout(project_hypergraph(H);random=false)
