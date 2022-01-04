@@ -93,18 +93,18 @@ _write_simple_json("fauci-email-tofrom-5.json", G)
 
 ##
 G = _build_email_tofrom_graph(data; maxset=5, keepfauci=false, keepcc=true)
-_write_simple_json("fauci-email-tofrom-cc-5.json", G)
+_write_simple_json("fauci-email-graph-tofrom-nofauci-cc-5.json", G)
 ##
 G = _build_email_repliedto_graph(data; keepfauci=false)
-_write_simple_json("fauci-email-repliedto.json", G)
+_write_simple_json("fauci-email-graph-repliedto-nofauci.json", G)
 ##
 G = _build_email_hypergraph_projection(data;
   hyperedgeparts=("sender","recipients"), mindegree=2)
-_write_simple_json("fauci-email-hypergraph-projection.json", G)
+_write_simple_json("fauci-email-graph-hypergraph-projection-nocc.json", G)
 ##
 G = _build_email_hypergraph_projection(data;
   hyperedgeparts=("sender","recipients","cc"), mindegree=2)
-_write_simple_json("fauci-email-hypergraph-projection-cc.json", G)
+_write_simple_json("fauci-email-graph-hypergraph-projection-cc.json", G)
 ##
 Tcc_ids = temporal_reachability(data) |> R->min.(R.R, R.R') |> simple_clique_heuristic
 
@@ -137,7 +137,7 @@ function _write_json_graph_sequence(filename::String, G::NamedTuple)
     write(f, "}\n")
   end
 end
-_write_json_graph_sequence("fauci-email-bydate-sequence-tofrom.json", T)
+_write_json_graph_sequence("fauci-email-temporalgraph-tofrom.json", T)
 
 ## Construct a hypergraph and save it.
 include("methods_hypergraph.jl")
