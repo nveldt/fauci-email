@@ -1,12 +1,12 @@
 # to run,
 #
-include("../methods.jl")
+include("methods.jl")
 ##
-graphs = ["fauci-email-repliedto.json" => "\\texttt{repliedto}",
-  "fauci-email-hypergraph-projection.json" => "\\texttt{hypergraph-projection} without CC",
-  "fauci-email-hypergraph-projection-cc.json" => "\\texttt{hypergraph-projection} with CC",
-  "fauci-email-tofrom-5.json"  => "\\texttt{tofrom} without CC",
-  "fauci-email-tofrom-cc-5.json"  => "\\texttt{tofrom} with CC",]
+graphs = ["fauci-email-graph-repliedto-nofauci.json" => "\\texttt{repliedto-nofauci}",
+  "fauci-email-graph-hypergraph-projection-nocc.json" => "\\texttt{hypergraph-proj} w/o CC",
+  "fauci-email-graph-hypergraph-projection-cc.json" => "\\texttt{hypergraph-proj} with CC",
+  "fauci-email-graph-tofrom-nofauci-nocc-5.json"  => "\\texttt{tofrom-nofauci} w/o CC",
+  "fauci-email-graph-tofrom-nofauci-cc-5.json"  => "\\texttt{tofrom-nofauci} with CC"]
 topk = 10
 results = Dict(map( g-> begin
   G = _read_final(g)
