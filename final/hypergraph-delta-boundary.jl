@@ -1,4 +1,3 @@
-##
 include("../methods.jl")
 include("../methods_hypergraph.jl")
 

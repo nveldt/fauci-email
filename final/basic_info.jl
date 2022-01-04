@@ -1,5 +1,5 @@
-include("methods.jl")
-include("methods_temporal.jl")
+include("../methods.jl")
+include("../methods_temporal.jl")
 ##
 println("Threads: $(length(data["emails"]))")
 println("Emails: $(sum(length.(data["emails"])))")
