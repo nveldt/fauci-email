@@ -1,7 +1,7 @@
 ##
 include("../methods.jl")
 ##
-G = _read_final_with_products("fauci-email-tofrom-5.json")
+G = _read_final_with_products("fauci-email-graph-tofrom-nofauci-nocc-5.json")
 G = (G..., groups=G.products.simple.modularity, xy=G.products.simple.xy)
 
 drawgraph(G, size=(350,350))
@@ -51,6 +51,7 @@ for gid = 1:maximum(G.groups)
 end
 # permute by bc size...
 dp = sortperm(bc, rev=true)
+_darker(x::RGB, f::Real) = RGB(f*x.r, f*x.g, f*x.b)
 scatter!(G.xy[dp,1],G.xy[dp,2],
   markersize=log.(bc[dp].+1).+2, color=G.groups[dp],
   markerstrokecolor=:white,
@@ -64,7 +65,6 @@ for i=dp[1:14]
     #fontargs=(;rotation=-rand(-25:25))
     )
 end
-_darker(x::RGB, f::Real) = RGB(f*x.r, f*x.g, f*x.b)
 # show other labels
 println()
 for n in ["awwad", "abutaleb", "beigel", "cabezas", "niaid news"]
@@ -79,7 +79,7 @@ plot!()
 ##
 savefig("figures/modularity-tofrom.pdf")
 ## Try adding in CCs
-G = _read_final_with_products("fauci-email-tofrom-cc-5.json")
+G = _read_final_with_products("fauci-email-graph-tofrom-nofauci-cc-5.json")
 G = (G..., groups=G.products.weighted.modularity, xy=G.products.weighted.xy)
 drawgraph(G, size=(350,350))
 bc = igraph_betweenness(G.A)
@@ -128,7 +128,7 @@ plot!()
 ##
 savefig("figures/modularity-tofrom-cc.pdf")
 ## Try repliedto network
-G = _read_final_with_products("fauci-email-repliedto.json")
+G = _read_final_with_products("fauci-email-graph-repliedto-nofauci.json")
 G = (G..., groups=G.products.simple.modularity, xy=G.products.simple.xy)
 drawgraph(G, size=(350,350))
 bc = igraph_betweenness(G.A)
@@ -170,11 +170,11 @@ plot!()
 savefig("figures/modularity-repliedto.pdf")
 
 ##
-G = _read_final_with_products("fauci-email-hypergraph-projection.json")
+G = _read_final_with_products("fauci-email-graph-hypergraph-projection-nocc.json")
 G = (G..., groups=G.products.weighted.modularity, xy=G.products.weighted.xy)
 
 ## Test this with a drawing
-G = _read_final_with_products("fauci-email-hypergraph-projection.json")
+G = _read_final_with_products("fauci-email-graph-hypergraph-projection-nocc.json")
 G = _simple_graph(G)
 G = (G..., groups=G.products.simple.modularity, xy=G.products.simple.xy)
 # drop Fauci
@@ -231,10 +231,8 @@ plot!()
 savefig("figures/modularity-hyperproj.pdf")
 
 ## Make a table of networks, and the top BC nodes and partitions
-graphs = [#"fauci-email-repliedto.json" => "\\texttt{repliedto}",
-  #"fauci-email-hypergraph-projection.json" => "\\texttt{hypergraph-projection} without CC",
-  "fauci-email-tofrom-5.json"  => "\\texttt{tofrom} without CC",
-  "fauci-email-tofrom-cc-5.json"  => "\\texttt{tofrom} with CC"]
+graphs = ["fauci-email-graph-tofrom-nofauci-nocc-5.json"  => "\\texttt{tofrom} without CC",
+  "fauci-email-graph-tofrom-nofauci-cc-5.json"  => "\\texttt{tofrom} with CC"]
 topk = 25
 results = Dict(map( g-> begin
   G = _read_final_with_products(g)

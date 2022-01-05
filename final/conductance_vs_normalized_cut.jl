@@ -7,7 +7,7 @@ using Measures
 #G = _read_final("fauci-email-tofrom-cc-5.json") |>
         #G -> (G..., A = spones!(G.A - Diagonal(G.A))) |> # remove weights and diagonals
         #G -> (G..., xy = readdlm("fauci-email-tofrom-cc-5-modularity.xy"))
-G = _read_final_with_products("fauci-email-tofrom-cc-5.json")
+G = _read_final_with_products("fauci-email-graph-tofrom-nofauci-cc-5.json")
 G = _simple_graph(G)
 G = (G..., xy=G.products.simple.xy)
 ## Use Exact modularity and group-based layout to make the vis easier...

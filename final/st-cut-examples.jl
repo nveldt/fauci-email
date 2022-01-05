@@ -1,8 +1,8 @@
 ##
 include("../methods.jl")
 ##
-G = _read_final_with_products("fauci-email-tofrom-5.json")
-
+G = _read_final_with_products("fauci-email-graph-tofrom-nofauci-nocc-5.json")
+using Measures
 ##
 function _print_cut(G, S)
   Ac = copy(G.A)
@@ -103,7 +103,7 @@ function _st_plot_hyper(G, s::AbstractString, t::AbstractString)
 
   plot!(legend=:bottomleft, legendfontsize=9)
 end
-G = _read_final_with_products("fauci-email-hypergraph-projection.json")
+G = _read_final_with_products("fauci-email-graph-hypergraph-projection-nocc.json")
 _st_plot_hyper(G, "conrad", "fauci")
 plot!(legend=:none)
 ##
