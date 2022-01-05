@@ -2,7 +2,7 @@
 include("../methods.jl")
 include("../methods_temporal.jl")
 ##
-T = _read_final_sequence("fauci-email-bydate-sequence-tofrom.json")
+T = _read_final_sequence("fauci-email-temporalgraph-tofrom.json")
 
 ## Show the collapsed graph with Fauci
 TG = (T..., A=sum(T.T) |> A->max.(A,A')) # adjacency matrix sum
@@ -286,6 +286,7 @@ end
 curslice=1
 slicedates = T2.dates
 anim = @animate for (pos,mat,date) in rval
+  global curslice
   #@show size(pos)
   # find slice to get communitiies..
   if slicedates[curslice] != date
@@ -329,7 +330,7 @@ for thread in data["emails"]
     people = [email["sender"]; email["recipients"]; email["cc"]].+1 # off by one
     if startdate <= DateTime(email["time"][1:19],dt) <= enddate &&
        ids[1] in people
-      print_email(email, data["names"])
+      print_email(email, data["names"]; text = false)
     end
   end
 end
