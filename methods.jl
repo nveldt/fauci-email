@@ -2,9 +2,10 @@
 using LinearAlgebra
 using MatrixNetworks
 using JSON
+using DelimitedFiles
 using Printf
 
-data = JSON.parsefile("fauci-email-graph.json")
+data = JSON.parsefile("fauci-email-data.json")
 include("include/FlowSeed.jl")
 include("include/PushRelabelMaxflow.jl")
 
@@ -51,13 +52,32 @@ using PyCall
 using Conda
 using Random
 const igraph = pyimport_conda("igraph","python-igraph","conda-forge")
-function igraph_layout(A::SparseMatrixCSC{T}, layoutname::AbstractString="fr") where T
+const pyrandom = pyimport("random")
+function igraph_layout(A::SparseMatrixCSC{T}, layoutname::AbstractString="fr";
+    random::Bool=true) where T
     ei,ej,ew = findnz(A)
     edgelist = [(ei[i]-1,ej[i]-1) for i = 1:length(ei)]
     nverts = size(A)
     G = igraph.Graph(nverts, edges=edgelist, directed=false)
-    xy = G.layout(layoutname)
+    if random
+      xy = G.layout(layoutname)
+    else
+      pyrngstate = pyrandom.getstate()
+      pyrandom.seed(0)
+      xy = G.layout(layoutname)
+      pyrandom.setstate(pyrngstate)
+    end
     xy = [Float64(xy[i][j]) for i in 1:length(xy),  j in 1:length(xy[1])]
+end
+
+function igraph_betweenness(A::SparseMatrixCSC{T}) where T
+  ei,ej,ew = findnz(A)
+  edgelist = [(ei[i]-1,ej[i]-1) for i = 1:length(ei)]
+
+  nverts = size(A)
+  G = igraph.Graph(nverts, edges=edgelist, directed=false)
+  bc = G.betweenness()
+  return bc
 end
 
 function _mindegree_and_cc_filter(A;mindegree=0,weightdegree=false)
@@ -243,12 +263,10 @@ function _build_email_repliedto_graph(data;
       mindegree, keepfauci, emailweight)
 end
 #F = _build_email_tofrom_graph(data; mindegree=0, keepfauci=false, maxset=5)
+
 ##
-function build_graphs(data)
-  faucifoia = Dict{String,Any}()
-  faucifoia["tofrom"] = _build_tofrom(data)
-  faucifoia["tofrom-hole"]
-  return results
+function _simple_graph(G::NamedTuple)
+  return (G..., A = spones!(dropzeros!(G.A - Diagonal(G.A))))
 end
 
 ##
@@ -268,7 +286,7 @@ function densify_graph_groups(A,groups; within_group_deg::Int=ceil(Int,length(un
 
     if gd >= target_deg
       # move it halfway to max possible
-      target_deg = 0.5*target_deg + 0.5*length(Gv)
+      target_deg = 0.5*gd + 0.5*length(Gv)
     end
     erp = min((target_deg - gd)/length(Gv),1)
     println("group $(gi) size=$(length(Gv))  within_avg_deg = $(gd)   target_within=$(target_deg)  erprob=$(erp)")
@@ -334,8 +352,8 @@ spones(A::SparseMatrixCSC) = spones!(copy(A))
 stcut(G::NamedTuple, s::String, t::String) = stcut(G.A, nodeid(G,s), nodeid(G,t))
 stcut(f::Function, G::NamedTuple, s::String, t::String) = stcut(f(G.A), nodeid(G,s), nodeid(G,t))
 
-function igraph_layout(G::NamedTuple,layout="fr")
-  xy = igraph_layout(G.A)
+function igraph_layout(G::NamedTuple,layout="fr";random::Bool=true)
+  xy = igraph_layout(G.A, layout; random)
   return (G..., xy=xy)
 end
 
@@ -416,12 +434,15 @@ function drawset!(G::NamedTuple, S; kwargs...)
   scatter!(G.xy[S,1],G.xy[S,2];hover=G.names[S], markerstrokewidth=0,kwargs...)
 end
 
-function showlabel!(G::NamedTuple, name::String)
-  id = nodeid(G,name)
-  annotate!(G.xy[id,1],G.xy[id,2],G.names[id])
+function showlabel!(G::NamedTuple, findname::String, args...; offset::Int=0, textfunc=nothing, fontargs=(;), kwargs...)
+  id = nodeid(G,findname)
+  ltext = G.names[id]
+  if textfunc !== nothing
+    ltext = textfunc(ltext)
+  end
+  annotate!(G.xy[id,1],G.xy[id,2],
+    Plots.text(repeat(" ",offset)*ltext, args...; fontargs...); kwargs...)
 end
-
-
 
 ##
 function print_email(email, names; text::Bool=true)
@@ -449,4 +470,101 @@ function print_thread(thread, names::Vector)
 end
 function print_thread(data::Dict, tid::Int)
   print_thread(data["emails"][tid], data["names"])
+end
+
+## ranking display helpers
+function _rank_in_others(name,results,keyorder)
+  # name - the person to get the rank of
+  # results - the dictionary of results
+  # myresult - the tag for my result in the results dictionary
+  map(key -> begin
+      r = results[key]
+      if !(name in r.names)
+        return (key => missing)
+      end
+      p = sortperm(r.x, rev=true)
+      return (key => findfirst(r.names[p] .== name))
+    end, keyorder)
+end
+function _write_score_table(results, order_and_titles;
+  nameformat=nothing, writescore::Bool=true)
+  nresults = length(order_and_titles)
+  for (key,title) in order_and_titles
+    r = results[key]
+    println("%")
+    println("% -- ", key)
+    println("%")
+    println("\\begin{tabular}{*{$nresults}{p{16pt}@{}}p{112pt}}")
+    println("\\toprule")
+    println("\\multicolumn{$(nresults+1)}{c}{$title} \\\\")
+    println("\\midrule")
+    for (n,v) in r.topk # name and value
+      in_others = _rank_in_others(n,results,first.(order_and_titles))
+      #@show n, v
+      #@show in_others
+      for (key_other, rank_in_other) in in_others
+        if key_other == key
+          print("\\textcolor{LightGray}{")
+        end
+        print(ismissing(rank_in_other) ? "--" :  rank_in_other)
+        if key_other == key
+          print("}")
+        end
+        print(" & ")
+      end
+      println("$(nameformat === nothing ? n : nameformat(r, n))",
+        writescore ? ", $(round(v,digits=6))" : "", " \\\\")
+    end
+    println("\\bottomrule")
+    println("\\end{tabular}")
+  end
+end
+
+
+##
+function _edgedata_to_sparse(gdata, n::Integer)
+  if haskey(gdata, "edges") && haskey(gdata, "edgedata")
+    m = gdata["edges"]
+    X = reshape(Float64.(gdata["edgedata"]), 3, m)
+    A = sparse(Int.(X[1,:]).+1, Int.(X[2,:]).+1, X[3,:], n, n)
+  else
+    throw(ArgumentError("dictionary doesn't have the right keys"))
+  end
+end
+function _read_final(fn::AbstractString)
+  gdata = JSON.parsefile(fn)
+  n = gdata["vertices"]
+  A = _edgedata_to_sparse(gdata, n)
+  # find all instances of edgedata and convert to adjaency matrices...
+  return (A=A, names=string.(gdata["labels"]), orgs=Int.(gdata["orgs"]))
+end
+
+function _read_products(fn::AbstractString)
+  p = JSON.parsefile(fn)
+  if haskey(p,"xy")
+    p["xy"] = hcat(p["xy"]...)
+  end
+  p["ncut"] = findall(p["ncut"] .> 0)
+  p["cond"] = findall(p["cond"]  .> 0)
+  p["spectral"] =findall(p["spectral"]  .> 0)
+  p["modularity"] = Int.(p["modularity"]).+1
+  # see https://discourse.julialang.org/t/how-to-make-a-named-tuple-from-a-dictionary/10899/14
+  return NamedTuple{Tuple(Symbol.(keys(p)))}(values(p))
+  #return (;p...) # make  a dictionary into a named tuple
+end
+
+function _read_final_with_products(fn::AbstractString)
+  G = _read_final(fn)
+  pw = _read_products(splitext(fn)[1]*"-products-weighted.json")
+  ps = _read_products(splitext(fn)[1]*"-products-simple.json")
+  return (G..., products=(simple=ps, weighted=pw), xy=ps.xy)
+end
+
+
+function _read_final_sequence(fn::AbstractString)
+  gdata = JSON.parsefile(fn)
+  n = gdata["vertices"]
+  As = _edgedata_to_sparse.(gdata["sequencedata"], n)
+  # find all instances of edgedata and convert to adjaency matrices...
+  return (T=As, dates=Date.(gdata["dates"]), names=string.(gdata["labels"]), orgs=Int.(gdata["orgs"]))
 end

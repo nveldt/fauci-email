@@ -61,8 +61,8 @@ end
 
 # For a set S in a graph with adjacency matrix A, return some information about
 # S including its conductance, number of interior edges, volume, and cut.
-function set_stats(A::SparseMatrixCSC{Float64,Int64},
-    S::Vector{Int64},volA::Float64)
+function set_stats(A::SparseMatrixCSC{T,Int64},
+    S::Vector{Int64},volA::V) where {T <: Real, V <: Real}
 
     if volA == 0.0
         volA = sum(A.nzval)
@@ -70,7 +70,7 @@ function set_stats(A::SparseMatrixCSC{Float64,Int64},
 
     if length(S) == size(A,1)
         # then we have an indicator vector
-        S = findall(x->x!=0,eS)
+        S = findall(x->x!=0,S)
         AS = A[:,S]
     else
         # then we have a subset

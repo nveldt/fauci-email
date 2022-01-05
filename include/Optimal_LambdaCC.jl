@@ -13,7 +13,7 @@ function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
         lam = lam1
         println("Starting with lambda = $lam.")
     end
-      
+
     searching = true
     Clusterings = Vector{Vector{Int64}}()
     Lambdas = Vector{Float64}()
@@ -34,10 +34,14 @@ function exact_normalized_cut(A,lam1 = 0.0,verbose = true)
         # 3. Save set if improvement found. Terminate otherwise
         if Best_ncut > lam
             Best_ncut = lam
-            BestS = vec(findall(x->x==whichclus,c)) 
+            BestS = vec(findall(x->x==whichclus,c))
         else
             searching = false
         end
+    end
+
+    if length(BestS) > n/2
+        BestS=setdiff(1:n, BestS)
     end
 
     return Clusterings, Lambdas, BestS
@@ -64,35 +68,6 @@ function compute_min_norm_cut(A,c,returnwhich = false)
     else
         return normcut
     end
-end
-
-function set_stats(A::SparseMatrixCSC{Float64,Int64},
-    S::Vector{Int64},volA::Float64=0.0)
-
-    if volA == 0.0
-        volA = sum(A.nzval)
-    end
-
-    if length(S) == size(A,1)
-        # then we have an indicator vector
-        S = findall(x->x!=0,S)
-        AS = A[:,S]
-    else
-        # then we have a subset
-        @assert(minimum(S) >= 1)
-        @assert(maximum(S) <= size(A,1))
-        AS = A[:,S]
-    end
-
-    vol = sum(AS.nzval);
-    SAS = AS[S,:]
-    edges = sum(SAS.nzval);
-    cut = vol-edges
-
-    cond = cut/minimum([vol,volA-vol]);
-
-    return cut, vol, edges, cond
-
 end
 
 function exact_modularity(A)
@@ -282,7 +257,7 @@ function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
     end
 
     # Find intial first solution
-    if verbose 
+    if verbose
         println("First round of optimization")
     end
     JuMP.optimize!(m)
@@ -293,7 +268,7 @@ function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
 
          # Store violating tuples in a vector
          violations = Vector{Tuple{Int,Int,Int}}()
-         
+
          find_violations!(D,violations)
 
          # Iterate through and add constraints
@@ -397,7 +372,7 @@ function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
     end
 
     # Find intial first solution
-    if verbose 
+    if verbose
         println("First round of optimization")
     end
     JuMP.optimize!(m)
@@ -408,7 +383,7 @@ function LazyExactLambdaCC(A,lam,outputflag = true,verbose = true)
 
          # Store violating tuples in a vector
          violations = Vector{Tuple{Int,Int,Int}}()
-         
+
          find_violations!(D,violations)
 
          # Iterate through and add constraints

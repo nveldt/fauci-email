@@ -22,13 +22,13 @@ function exact_conductance(A,outputflag = true)
 
     @objective(ml, Min, K)
     @constraint(ml, sum(x) >= 1)
-    @constraint(ml, sum(x[i]*d[i] for i = 1:n) - 2*sum(Z[k]*V[k] for k = 1:m) - sum(y[i]*d[i] for i = 1:n) <= 0)
+    @constraint(ml, sum(x[i]*d[i] for i = 1:n) - sum(Z[k]*V[k]*(I[k] == J[k] ? 1 : 2) for k = 1:m) - sum(y[i]*d[i] for i = 1:n) <= 0)
     for i = 1:n
         @constraint(ml, y[i] <= x[i])
         @constraint(ml, y[i] <= K)
     end
     @constraint(ml, sum(x[i]*d[i] for i = 1:n) <= vol/2)
-       
+
     for k = 1:m
         @constraint(ml, Z[k] <= x[I[k]])
         @constraint(ml, Z[k] <= x[J[k]])

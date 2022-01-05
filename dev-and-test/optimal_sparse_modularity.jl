@@ -1,3 +1,6 @@
+## This works, but won't converge due to one of the Gurobi steps
+# Things to try yet...
+# Set presolve to 2 to get it to try harder on presolve for the models.
 
 ##
 include("../include/Optimal_LambdaCC.jl")
@@ -51,7 +54,7 @@ function LazyExactSparseModularityGurobi(B,outputflag = true,verbose = true)
     W = copy(B)
     n = size(W,1)
 
-    edgevals = collect(zip(findnz(M)[1:3]...))
+    #edgevals = collect(zip(findnz(M)[1:3]...))
 
 
     vmap = -ones(Int,n,n)
@@ -71,6 +74,9 @@ function LazyExactSparseModularityGurobi(B,outputflag = true,verbose = true)
     m = aptr[]
 
     try
+        # set presolve to 2
+
+
         cind = Int32[0,0,0]
         cval = Float64[0,0,0]
 
@@ -111,9 +117,11 @@ function LazyExactSparseModularityGurobi(B,outputflag = true,verbose = true)
               #D = Matrix(JuMP.value.(x)')
 
              # Store violating tuples in a vector
-             violations = Vector{Tuple{Int,Int,Int}}()
 
-             find_violations!(D,violations)
+             violations = Vector{Tuple{Int,Int,Int}}()
+             println("Finding violations...")
+             dt = @elapsed find_violations!(D,violations)
+             println("... done ($dt seconds)")
 
              # Iterate through and add constraints
              numvi = size(violations,1)
@@ -133,7 +141,7 @@ function LazyExactSparseModularityGurobi(B,outputflag = true,verbose = true)
                  cind[1] = vmap[v[1],v[2]]
                  cind[2] = vmap[min(v[1],v[3]),max(v[1],v[3])]
                  cind[3] = vmap[min(v[2],v[3]),max(v[2],v[3])]
-                 cval[1] = 1
+                 cval[1] = 1l
                  cval[2] = -1
                  cval[3] = -1
                  #@show cind, cval
@@ -180,7 +188,7 @@ function LazyExactSparseModularity(B::SparseMatrixCSC,outputflag = true,verbose 
     W = copy(B)
     n = size(W,1)
 
-    edgevals = collect(zip(findnz(M)[1:3]...))
+    edgevals = collect(zip(findnz(triu(W,1))[1:3]...))
 
     # Create a model that will use Gurobi to solve
     # m = Model(solver=GurobiSolver(OutputFlag = 1,TimeLimit = time_limit, FeasibilityTol = FeasTol, Method = SolverMethod, Crossover = CrossoverStrategy, LogFile = OutputFile))

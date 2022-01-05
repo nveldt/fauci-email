@@ -68,7 +68,7 @@ T = build_temporal_graphs(data; subset=Tcc_ids)
 # We remove Fauci from these comparisons.
 TG = (T..., A=sum(last.(T.T)) |> A->max.(A,A')) |>
   x-> subset_and_mindegree_cc_filter(x, 2:size(x.A,1))# adjacency matrix sum
-TG = TG |> igraph_layout
+TG = igraph_layout(TG; random=false)
 drawgraph(TG; markersize=15,alpha=0.5,linewidth=2,shownames=true,shorten=0.2)
 
 ## Compare the replied to graph to the temporal strong component without Fauci
@@ -84,13 +84,7 @@ setdiff(RT.names, TG.names) # so all RT names are in TG...
 ## Compute the temporal communicability scores
 # Peter Grindrod  1 , Mark C Parsons, Desmond J Higham, Ernesto Estrada
 # https://doi.org/10.1103/PhysRevE.83.046120
-function temporal_communicability(T::NamedTuple, a::Float64)
-  Q = prod(map(t->inv(Matrix(I-a*t[2])), T.T))
-  broadcast = vec(sum(Q,dims=2))
-  recv = vec(sum(Q,dims=1))
-  return (Q, broadcast, receive=recv, names=T.names)
-end
-tcomm = temporal_communicability(T, 0.2)
+tcomm = temporal_communicability(T, 0.02)
 ##
 T.names[sortperm(tcomm.broadcast)[1:10]]
 ##
@@ -238,30 +232,6 @@ B = B + omega*spdiags(ones(N*T,2),[-N,N],N*T,N*T);
 Q = Q/twomu
 S = reshape(S,N,T);
 =#
-function expand_to_slicetime_matrix(T::NamedTuple;
-  gamma::Float64=1.0,omega::Float64=0.5)
-  dates, mats = first.(T.T), last.(T.T)
-  nT = length(dates)
-  N = size(mats[1],1)
-  @assert(all(N .== size.(mats,1)))
-  B = spzeros(nT*N, nT*N) # we are gonna be really naughty with sparse construction
-  # TODO, make this much better
-  twomu = 0
-  slices = UnitRange{Int}[]
-  for t=1:nT
-    mat = mats[t]
-    mat = max.(mat,mat') # make it symmetric...
-    k = vec(sum(mat;dims=1)); # column sums...
-    twom = sum(k)
-    twomu += twom
-    slice = (1:N) .+ (t-1)*N
-    push!(slices,slice)
-    B[slice,slice] = mat-gamma*k*k'/twom
-  end
-  twomu = twomu+2*omega*N*(nT-1)
-  B = B + omega*spdiagm(nT*N, nT*N, -N => ones(N*(nT-1)), N=>ones(N*(nT-1)))
-  return B, slices
-end
 M, slices = expand_to_slicetime_matrix(T)
 ##
 using HyperModularity

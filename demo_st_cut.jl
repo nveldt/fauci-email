@@ -1,6 +1,7 @@
 include("methods.jl")
 
 ## Nate's large set analysis
+Random.seed!(0)
 G = _build_email_tofrom_graph(data; maxset=5, keepfauci=false) |> igraph_layout
 drawgraph(G)
 # This syntax flourish saves S1N, the names in the set, and gives S1 to drawset!
