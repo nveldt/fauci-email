@@ -85,7 +85,22 @@ e.g. in python3 this will output the sender and recipient lists for each email i
         print("--")
         print("From:", names[email["sender"]])
         print("To:", "; ".join([names[nid] for nid in email["recipients"]]))
+        
+In Julia, the data can be loaded as follows:
 
+    using JSON
+    data = JSON.parsefile("data/fauci-email-data.json")
+
+The first email in the first thread is then given by:
+
+    data["emails][1][1] =
+            Dict{String, Any} with 6 entries:
+              "recipients" => Any[1]
+              "body"       => "I do not understand why you are asking me to \"review\" this. Is this an FYI??"
+              "time"       => "2020-03-06T03:49:45+00:00"
+              "sender"     => 0
+              "cc"         => Any[2, 3, 4]
+              "subject"    => "RE: Please review: House Oversight Letter on Coronavirus Diagnostics"
 
 Networks and Graphs
 -------------------
