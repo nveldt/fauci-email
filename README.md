@@ -93,7 +93,7 @@ In Julia, the data can be loaded as follows:
 
 The first email in the first thread is then given by:
 
-    data["emails][1][1] =
+    data["emails"][1][1] =
             Dict{String, Any} with 6 entries:
               "recipients" => Any[1]
               "body"       => "I do not understand why you are asking me to \"review\" this. Is this an FYI??"
